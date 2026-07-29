@@ -19,6 +19,14 @@ const colorMap = {
     background: "rgba(22, 160, 133, 0.12)",
     color: "var(--color-teal)",
   },
+  blue: {
+    background: "rgba(37, 99, 235, 0.12)",
+    color: "#1D4ED8",
+  },
+  orange: {
+    background: "rgba(234, 88, 12, 0.12)",
+    color: "#C2410C",
+  },
   grey: {
     background: "var(--color-grey-bg, #BDC3C7)",
     color: "var(--color-grey-text, #636E72)",

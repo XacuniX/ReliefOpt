@@ -13,6 +13,10 @@ import {
   Toast,
 } from "./components/ui";
 import RoleGate from "./components/RoleGate";
+import InventoryPage from "./pages/InventoryPage";
+import TasksPage from "./pages/TasksPage";
+import CargoPage from "./pages/CargoPage";
+import UsersPage from "./pages/UsersPage";
 
 /* ── Inline CSS variables (temporary — will move to theme.css) ── */
 const themeStyle = document.createElement("style");
@@ -164,11 +168,19 @@ function TestApp() {
   );
 }
 
+function App() {
+  if (window.location.pathname === "/inventory") return <InventoryPage />;
+  if (window.location.pathname === "/tasks") return <TasksPage />;
+  if (window.location.pathname === "/cargo") return <CargoPage />;
+  if (window.location.pathname === "/users") return <UsersPage />;
+  return <TestApp />;
+}
+
 /* ── Mount ── */
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
-      <TestApp />
+      <App />
     </AuthProvider>
   </React.StrictMode>
 );

@@ -31,6 +31,7 @@ export default function Button({
   disabled = false,
   style: extraStyle,
   type = "button",
+  ...props
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -95,6 +96,7 @@ export default function Button({
       disabled={disabled || loading}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      {...props}
     >
       {loading && <span style={spinnerStyle} />}
       {children}

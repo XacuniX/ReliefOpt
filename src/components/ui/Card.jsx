@@ -1,4 +1,4 @@
-export default function Card({ children, style: extraStyle }) {
+export default function Card({ children, style: extraStyle, ...props }) {
   const cardStyle = {
     background: "var(--color-white)",
     borderRadius: "8px",
@@ -7,5 +7,5 @@ export default function Card({ children, style: extraStyle }) {
     ...extraStyle,
   };
 
-  return <div style={cardStyle}>{children}</div>;
+  return <div style={cardStyle} {...props}>{children}</div>;
 }
