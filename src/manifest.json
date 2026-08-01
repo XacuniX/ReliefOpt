@@ -1,0 +1,21 @@
+{
+  "name": "ReliefOpt",
+  "short_name": "ReliefOpt",
+  "description": "Disaster relief operations platform for Bangladesh",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1B2A4A",
+  "background_color": "#F0F2F5",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
