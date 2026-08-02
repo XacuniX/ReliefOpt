@@ -1,6 +1,6 @@
 import { cn } from "../../lib/utils";
 
-export default function Table({ columns, data, onSort, sortKey, sortDir, className }) {
+export default function Table({ columns, data, onSort, sortKey, sortDir, className, onRowClick }) {
   return (
     <div className={cn("rounded-xl bg-card border shadow-sm overflow-hidden", className)}>
       <div className="overflow-x-auto">
@@ -39,7 +39,7 @@ export default function Table({ columns, data, onSort, sortKey, sortDir, classNa
               </tr>
             ) : (
               data.map((row, i) => (
-                <tr key={row.id || i} className="border-t border-border hover:bg-muted/30 transition-colors">
+                <tr key={row.id || i} className={`border-t border-border hover:bg-muted/30 transition-colors ${onRowClick ? "cursor-pointer" : ""}`} onClick={() => onRowClick?.(row)}>
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3 whitespace-nowrap">
                       {col.render ? col.render(row) : row[col.key]}

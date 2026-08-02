@@ -687,6 +687,110 @@ export const alerts = [
   },
 ];
 
+// ─── City Coordinates ─────────────────────────────────────────────────────────
+export const cityCoords = {
+  Sylhet: [24.8949, 91.8687],
+  Barishal: [22.7010, 90.3535],
+  Rangpur: [25.7439, 89.2752],
+  Cumilla: [23.4607, 91.1809],
+  Dhaka: [23.8103, 90.4125],
+  Chattogram: [22.3569, 91.7832],
+  Mymensingh: [24.7471, 90.4203],
+  Noakhali: [22.8696, 91.0995],
+  Khulna: [22.8456, 89.5403],
+  Rajshahi: [24.3745, 88.6042],
+  Mirpur: [23.8041, 90.3665],
+};
+
+// ─── Supply Drops ─────────────────────────────────────────────────────────────
+export const supplyDrops = [
+  {
+    id: "sd1",
+    location: "Sylhet",
+    name: "Food & Water Drop — Companiganj",
+    status: "Delivered",
+    lastUpdate: "2026-07-26T08:30:00Z",
+  },
+  {
+    id: "sd2",
+    location: "Barishal",
+    name: "Shelter Supplies — Coastal Zone",
+    status: "En Route",
+    lastUpdate: "2026-07-26T10:00:00Z",
+  },
+  {
+    id: "sd3",
+    location: "Cumilla",
+    name: "Medical Supplies Drop — Central",
+    status: "Delivered",
+    lastUpdate: "2026-07-25T16:45:00Z",
+  },
+];
+
+// ─── Peer Devices ─────────────────────────────────────────────────────────────
+export const peerDevices = [
+  {
+    id: "pd1",
+    deviceName: "Field Tablet — Kamal",
+    signalStrength: "High",
+    status: "Available",
+    lastSeen: "2026-07-26T11:00:00Z",
+  },
+  {
+    id: "pd2",
+    deviceName: "Mobile — Nasrin",
+    signalStrength: "Medium",
+    status: "Available",
+    lastSeen: "2026-07-26T10:55:00Z",
+  },
+  {
+    id: "pd3",
+    deviceName: "Rugged Phone — Taslima",
+    signalStrength: "Low",
+    status: "Busy",
+    lastSeen: "2026-07-26T10:40:00Z",
+  },
+];
+
+// ─── Offline Queue ────────────────────────────────────────────────────────────
+export const offlineQueue = [
+  {
+    id: "oq1",
+    actionType: "New Report",
+    timestamp: "2026-07-26T11:15:00Z",
+    status: "Queued",
+    details: "Flood report — Mymensingh",
+  },
+  {
+    id: "oq2",
+    actionType: "Stock Update",
+    timestamp: "2026-07-26T11:10:00Z",
+    status: "Queued",
+    details: "Rice qty updated to 2,450 kg",
+  },
+  {
+    id: "oq3",
+    actionType: "Task Update",
+    timestamp: "2026-07-26T11:05:00Z",
+    status: "Syncing",
+    details: "Evacuation task marked in progress",
+  },
+  {
+    id: "oq4",
+    actionType: "Stock Update",
+    timestamp: "2026-07-26T10:50:00Z",
+    status: "Failed",
+    details: "Paracetamol stock update failed",
+  },
+  {
+    id: "oq5",
+    actionType: "Task Update",
+    timestamp: "2026-07-26T10:30:00Z",
+    status: "Queued",
+    details: "Medical camp setup completed",
+  },
+];
+
 // ─── Cargo Vehicles ───────────────────────────────────────────────────────────
 export const cargoVehicles = [
   {
