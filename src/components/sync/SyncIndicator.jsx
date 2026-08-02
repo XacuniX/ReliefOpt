@@ -16,21 +16,24 @@ export default function SyncIndicator() {
   const config = {
     online: {
       dot: "bg-green-500",
-      icon: <Wifi className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />,
+      icon: <Wifi className="h-3.5 w-3.5" />,
       text: "Online – synced 2 min ago",
       textColor: "text-green-700 dark:text-green-400",
+      iconBg: "bg-green-500/10",
     },
     pending: {
       dot: "bg-amber-500",
-      icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />,
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
       text: `Sync Pending – ${queueCount} changes queued`,
       textColor: "text-amber-700 dark:text-amber-400",
+      iconBg: "bg-amber-500/10",
     },
     offline: {
       dot: "bg-red-500",
-      icon: <WifiOff className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />,
+      icon: <WifiOff className="h-3.5 w-3.5" />,
       text: "Offline Mode",
       textColor: "text-red-700 dark:text-red-400",
+      iconBg: "bg-red-500/10",
     },
   };
 
@@ -40,11 +43,11 @@ export default function SyncIndicator() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border shadow-sm text-xs font-medium hover:bg-accent transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border shadow-sm hover:bg-accent transition-colors cursor-pointer"
         aria-label="Sync status"
       >
-        {s.icon}
-        <span className={s.textColor}>{s.text}</span>
+        <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+        <span className={`text-xs font-medium ${s.textColor}`}>{s.text}</span>
       </button>
 
       <Dialog isOpen={open} onClose={() => setOpen(false)} title="Sync & Connectivity">

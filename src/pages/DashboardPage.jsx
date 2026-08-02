@@ -1,3 +1,4 @@
+import { useState } from "react";
 import RoleGate from "../components/RoleGate";
 import KpiCards from "../components/dashboard/KpiCards";
 import TeamTable from "../components/dashboard/TeamTable";
@@ -7,14 +8,28 @@ import { Button } from "../components/ui";
 import { RefreshCw } from "lucide-react";
 
 function DashboardContent() {
-  function handleRefresh() {}
+  const [lastUpdated, setLastUpdated] = useState(Date.now());
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  function handleRefresh() {
+    setLastUpdated(Date.now());
+    setRefreshKey((k) => k + 1);
+  }
+
+  function timeAgo(ts) {
+    const sec = Math.floor((Date.now() - ts) / 1000);
+    if (sec < 5) return "just now";
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    return `${min} min ago`;
+  }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto" key={refreshKey}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Operations Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Last Updated: just now</p>
+          <p className="text-sm text-muted-foreground mt-1">Last Updated: {timeAgo(lastUpdated)}</p>
         </div>
         <Button variant="ghost" size="icon" onClick={handleRefresh} aria-label="Refresh dashboard">
           <RefreshCw className="h-5 w-5" />

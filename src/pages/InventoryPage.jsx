@@ -22,7 +22,7 @@ export default function InventoryPage() {
       totalSkus: items.length,
       lowStock: items.filter((item) => item.qty < 20).length,
       outOfStock: items.filter((item) => item.qty === 0).length,
-      pendingShipments: 3,
+      pendingShipments: items.filter((item) => item.qty <= 5 && item.qty > 0).length,
     }),
     [items]
   );

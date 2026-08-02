@@ -13,6 +13,11 @@ export default function PeerPanel() {
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState(null);
 
+  function handleConnect(deviceName) {
+    setToast({ type: "info", message: `Connection request sent to ${deviceName}` });
+    setTimeout(() => setToast(null), 3000);
+  }
+
   function handleShareData() {
     setSyncing(true);
     setTimeout(() => {
@@ -53,7 +58,7 @@ export default function PeerPanel() {
                 />
               </div>
             </div>
-            <Button size="sm" variant="outline" className="shrink-0">
+            <Button size="sm" variant="outline" className="shrink-0" onClick={() => handleConnect(device.deviceName)}>
               Connect
             </Button>
           </div>

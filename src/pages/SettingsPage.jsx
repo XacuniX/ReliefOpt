@@ -1,20 +1,27 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Badge, Button, Card } from "../components/ui";
-import { Sun, Moon } from "lucide-react";
+import { Badge, Button, Card, Toast } from "../components/ui";
 import { useTheme } from "../context/ThemeContext";
 
 export default function SettingsPage() {
   const { currentUser } = useAuth();
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [language, setLanguage] = useState("English");
   const [cacheSize, setCacheSize] = useState(50);
   const [notifSound, setNotifSound] = useState(true);
+  const [toast, setToast] = useState(null);
 
   const roleColors = { central_admin: "navy", warehouse_manager: "amber", field_worker: "teal" };
 
   function clearCache() {
-    console.log("Cache cleared");
+    try {
+      const keys = Object.keys(localStorage).filter((k) => k.startsWith("reliefopt-"));
+      keys.forEach((k) => localStorage.removeItem(k));
+      setToast({ type: "success", message: `Cache cleared (${keys.length} entries removed).` });
+    } catch {
+      setToast({ type: "error", message: "Failed to clear cache." });
+    }
+    setTimeout(() => setToast(null), 3000);
   }
 
   return (
@@ -58,14 +65,22 @@ export default function SettingsPage() {
           <div className="mb-4 text-sm">
             <label className="flex items-center justify-between">
               <span>Language</span>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="English">English</option>
-                <option value="Bangla">Bangla</option>
-              </select>
+              <div className="flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${language === "English" ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-accent"}`}
+                  onClick={() => setLanguage("English")}
+                >
+                  English
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${language === "Bangla" ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-accent"}`}
+                  onClick={() => setLanguage("Bangla")}
+                >
+                  বাংলা
+                </button>
+              </div>
             </label>
           </div>
 
@@ -107,6 +122,10 @@ export default function SettingsPage() {
           <Button variant="outline" size="sm" onClick={clearCache}>Clear Cache</Button>
         </Card>
       </section>
+
+      {toast && (
+        <Toast type={toast.type} message={toast.message} onDismiss={() => setToast(null)} />
+      )}
     </div>
   );
 }

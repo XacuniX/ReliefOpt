@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Mic } from "lucide-react";
 import { Button, Textarea, Toast } from "../ui";
 import Dialog from "../ui/Dialog";
+import { cityCoords } from "../../mockData";
 
 export default function VoiceReportModal({ onPlotPin }) {
   const [open, setOpen] = useState(false);
@@ -33,16 +34,17 @@ export default function VoiceReportModal({ onPlotPin }) {
   }, [stage]);
 
   function handlePlotPin() {
+    const coords = cityCoords[extracted.location] || [23.8103, 90.4125];
     onPlotPin({
-      position: [23.8041, 90.3665],
-      location: "Mirpur",
-      waterLevel: "4ft",
-      peopleCount: "12",
-      childrenPresent: "Yes",
+      position: coords,
+      location: extracted.location,
+      waterLevel: extracted.waterLevel,
+      peopleCount: String(extracted.peopleStranded),
+      childrenPresent: extracted.childrenPresent,
     });
     setOpen(false);
     setStage("idle");
-    setToast({ type: "success", message: "Voice report plotted on map!" });
+    setToast({ type: "success", message: `Voice report plotted at ${extracted.location}!` });
     setTimeout(() => setToast(null), 3000);
   }
 

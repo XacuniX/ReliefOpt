@@ -3,10 +3,11 @@ import { Badge } from "../ui";
 import Sheet from "../ui/Sheet";
 import { Tabs, TabsContent } from "../ui/Tabs";
 import { notifications as mockNotifications } from "../../mockData";
-import { Bell } from "lucide-react";
+import { Bell, AlertTriangle, Info } from "lucide-react";
 
 const types = ["All", "Critical", "System"];
 const typeColors = { Critical: "red", System: "navy", Info: "teal" };
+const typeIcons = { Critical: AlertTriangle, System: Bell, Info: Info };
 
 export default function NotifDrawer() {
   const [open, setOpen] = useState(false);
@@ -64,6 +65,11 @@ export default function NotifDrawer() {
               tabIndex={0}
               onKeyDown={(e) => e.key === "Enter" && toggleRead(notif.id)}
             >
+              {(() => {
+                const Icon = typeIcons[notif.type] || Info;
+                const iconColor = notif.type === "Critical" ? "text-red-500" : notif.type === "System" ? "text-blue-500" : "text-teal-500";
+                return <Icon className={`h-4 w-4 mt-1 shrink-0 ${iconColor}`} />;
+              })()}
               {!notif.read && <span className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-0.5">

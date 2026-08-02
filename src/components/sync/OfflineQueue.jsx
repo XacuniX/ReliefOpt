@@ -1,5 +1,6 @@
-import { Button, Badge } from "../ui";
-import { offlineQueue } from "../../mockData";
+import { useState } from "react";
+import { Button, Badge, Toast } from "../ui";
+import { offlineQueue as initialQueue } from "../../mockData";
 import { RefreshCw } from "lucide-react";
 
 const statusColors = {
@@ -9,9 +10,27 @@ const statusColors = {
 };
 
 export default function OfflineQueue() {
+  const [queue, setQueue] = useState(initialQueue);
+  const [retrying, setRetrying] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  function handleRetryAll() {
+    setRetrying(true);
+    setQueue((prev) => prev.map((e) => ({ ...e, status: "Syncing" })));
+    setTimeout(() => {
+      setQueue((prev) => prev.map((e) => {
+        const succeeded = e.status === "Failed" ? Math.random() > 0.3 : true;
+        return { ...e, status: succeeded ? "Queued" : "Failed" };
+      }));
+      setRetrying(false);
+      setToast({ type: "success", message: "Retry complete. Changes queued for sync." });
+      setTimeout(() => setToast(null), 3000);
+    }, 2000);
+  }
+
   return (
     <div className="space-y-3">
-      {offlineQueue.map((entry) => (
+      {queue.map((entry) => (
         <div
           key={entry.id}
           className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border"
@@ -37,10 +56,18 @@ export default function OfflineQueue() {
         </div>
       ))}
 
-      <Button variant="outline" className="w-full">
-        <RefreshCw className="h-4 w-4 mr-2" />
-        Retry All
+      <Button variant="outline" className="w-full" onClick={handleRetryAll} disabled={retrying}>
+        <RefreshCw className={`h-4 w-4 mr-2 ${retrying ? "animate-spin" : ""}`} />
+        {retrying ? "Retrying..." : "Retry All"}
       </Button>
+
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onDismiss={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }
