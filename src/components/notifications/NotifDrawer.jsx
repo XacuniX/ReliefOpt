@@ -1,144 +1,12 @@
 import { useState } from "react";
 import { Badge } from "../ui";
+import Sheet from "../ui/Sheet";
+import { Tabs, TabsContent } from "../ui/Tabs";
 import { notifications as mockNotifications } from "../../mockData";
+import { Bell } from "lucide-react";
 
 const types = ["All", "Critical", "System"];
 const typeColors = { Critical: "red", System: "navy", Info: "teal" };
-
-const overlayStyle = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 1500,
-  background: "rgba(0,0,0,.3)",
-};
-
-const drawerStyle = {
-  position: "fixed",
-  top: 0,
-  right: 0,
-  bottom: 0,
-  width: 380,
-  maxWidth: "95vw",
-  background: "var(--color-white)",
-  boxShadow: "-4px 0 24px rgba(0,0,0,.15)",
-  zIndex: 1501,
-  display: "flex",
-  flexDirection: "column",
-  animation: "reliefopt-drawer-slide 0.25s ease",
-};
-
-const headerStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "var(--space-5) var(--space-6)",
-  borderBottom: "1px solid var(--color-smoke)",
-};
-
-const titleStyle = { fontSize: "var(--text-lg)", fontWeight: 700, margin: 0 };
-
-const closeBtn = {
-  background: "none",
-  border: "none",
-  fontSize: 22,
-  cursor: "pointer",
-  color: "var(--color-mid)",
-  lineHeight: 1,
-};
-
-const tabsStyle = {
-  display: "flex",
-  gap: 4,
-  padding: "var(--space-3) var(--space-6)",
-  borderBottom: "1px solid var(--color-smoke)",
-};
-
-const tabStyle = (active) => ({
-  background: active ? "var(--color-navy)" : "transparent",
-  color: active ? "var(--color-white)" : "var(--color-navy)",
-  border: "none",
-  borderRadius: 6,
-  padding: "6px 14px",
-  font: "inherit",
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: "pointer",
-});
-
-const listStyle = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "var(--space-3) var(--space-6)",
-};
-
-const itemStyle = (read) => ({
-  display: "flex",
-  gap: "var(--space-3)",
-  padding: "var(--space-3) 0",
-  borderBottom: "1px solid var(--color-smoke)",
-  opacity: read ? 0.55 : 1,
-});
-
-const dotStyle = { width: 8, height: 8, borderRadius: "50%", background: "var(--color-teal)", marginTop: 5, flexShrink: 0 };
-
-const bodyStyle = { flex: 1 };
-
-const itemTitleStyle = { fontSize: 14, fontWeight: 600, margin: "0 0 2px" };
-
-const itemBodyStyle = { fontSize: 13, color: "var(--color-navy)", margin: "0 0 6px", lineHeight: 1.4 };
-
-const timeStyle = { fontSize: 11, color: "var(--color-mid)" };
-
-const markAllStyle = {
-  display: "block",
-  width: "100%",
-  background: "transparent",
-  border: "1px solid var(--color-smoke)",
-  borderRadius: 6,
-  padding: "var(--space-2) var(--space-3)",
-  marginTop: "var(--space-4)",
-  font: "inherit",
-  fontSize: 13,
-  fontWeight: 600,
-  color: "var(--color-teal)",
-  cursor: "pointer",
-};
-
-const bellBtnStyle = {
-  position: "fixed",
-  top: 16,
-  right: 16,
-  zIndex: 1400,
-  background: "var(--color-white)",
-  border: "1.5px solid var(--color-mid)",
-  borderRadius: "50%",
-  width: 42,
-  height: 42,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-  fontSize: 18,
-  boxShadow: "0 2px 8px rgba(0,0,0,.08)",
-};
-
-const badgeDot = {
-  position: "absolute",
-  top: 6,
-  right: 6,
-  width: 10,
-  height: 10,
-  borderRadius: "50%",
-  background: "#C0392B",
-};
-
-const keyframes = `@keyframes reliefopt-drawer-slide { from { transform: translateX(100%); } to { transform: translateX(0); } }`;
-if (typeof document !== "undefined" && !document.getElementById("reliefopt-drawer-style")) {
-  const style = document.createElement("style");
-  style.id = "reliefopt-drawer-style";
-  style.textContent = keyframes;
-  document.head.appendChild(style);
-}
 
 export default function NotifDrawer() {
   const [open, setOpen] = useState(false);
@@ -152,9 +20,7 @@ export default function NotifDrawer() {
   });
 
   function toggleRead(id) {
-    setNotifs((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n))
-    );
+    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n)));
   }
 
   function markAllRead() {
@@ -165,64 +31,66 @@ export default function NotifDrawer() {
     <>
       <button
         type="button"
-        style={bellBtnStyle}
+        className="fixed top-4 right-4 z-[1400] h-10 w-10 rounded-full bg-card border shadow-sm flex items-center justify-center cursor-pointer hover:bg-accent transition-colors"
         onClick={() => setOpen(true)}
         aria-label={`Notifications (${unreadCount} unread)`}
       >
-        🔔
-        {unreadCount > 0 && <span style={badgeDot} />}
+        <Bell className="h-[18px] w-[18px] text-muted-foreground" />
+        {unreadCount > 0 && (
+          <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-red-500" />
+        )}
       </button>
 
-      {open && (
-        <>
-          <div style={overlayStyle} onClick={() => setOpen(false)} />
-          <aside style={drawerStyle} aria-label="Notifications panel">
-            <div style={headerStyle}>
-              <h2 style={titleStyle}>Notifications</h2>
-              <button type="button" style={closeBtn} onClick={() => setOpen(false)} aria-label="Close notifications">
-                ✕
-              </button>
-            </div>
+      <Sheet isOpen={open} onClose={() => setOpen(false)}>
+        <div className="flex items-center justify-between px-4 py-3">
+          <h2 className="text-lg font-bold">Notifications</h2>
+        </div>
 
-            <div style={tabsStyle}>
-              {types.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  style={tabStyle(activeTab === tab)}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+        <div className="px-4 pb-3 border-b">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            {types.map((tab) => (
+              <TabsContent key={tab} value={tab}>{tab}</TabsContent>
+            ))}
+          </Tabs>
+        </div>
 
-            <div style={listStyle}>
-              {filtered.map((notif) => (
-                <div key={notif.id} style={itemStyle(notif.read)} onClick={() => toggleRead(notif.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && toggleRead(notif.id)}>
-                  {!notif.read && <span style={dotStyle} />}
-                  <div style={bodyStyle}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 2 }}>
-                      <p style={itemTitleStyle}>{notif.title}</p>
-                      <Badge color={typeColors[notif.type] || "grey"} text={notif.type} />
-                    </div>
-                    <p style={itemBodyStyle}>{notif.body}</p>
-                    <span style={timeStyle}>{new Date(notif.timestamp).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
-                  </div>
+        <div className="px-4 py-3 flex-1 overflow-y-auto">
+          {filtered.map((notif) => (
+            <div
+              key={notif.id}
+              className={`flex gap-3 py-3 border-b border-border cursor-pointer ${notif.read ? "opacity-55" : ""}`}
+              onClick={() => toggleRead(notif.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && toggleRead(notif.id)}
+            >
+              {!notif.read && <span className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="text-sm font-semibold">{notif.title}</p>
+                  <Badge color={typeColors[notif.type] || "grey"} text={notif.type} />
                 </div>
-              ))}
-              {!filtered.length && (
-                <p style={{ color: "var(--color-mid)", textAlign: "center", padding: "var(--space-6) 0" }}>
-                  No {activeTab === "All" ? "notifications" : activeTab.toLowerCase()} notifications.
-                </p>
-              )}
-              <button type="button" style={markAllStyle} onClick={markAllRead}>
-                Mark all as read
-              </button>
+                <p className="text-[13px] leading-relaxed mb-1.5">{notif.body}</p>
+                <span className="text-[11px] text-muted-foreground">
+                  {new Date(notif.timestamp).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                </span>
+              </div>
             </div>
-          </aside>
-        </>
-      )}
+          ))}
+          {!filtered.length && (
+            <p className="text-muted-foreground text-center py-6">
+              No {activeTab === "All" ? "notifications" : activeTab.toLowerCase()} notifications.
+            </p>
+          )}
+          <button
+            type="button"
+            className="w-full mt-4 py-2 border rounded-md text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
+            onClick={markAllRead}
+          >
+            Mark all as read
+          </button>
+        </div>
+      </Sheet>
     </>
   );
 }

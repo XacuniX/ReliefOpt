@@ -8,4 +8,5 @@ export const ROUTES = {
   CARGO: "/cargo",
   USERS: "/users",
   SETTINGS: "/settings",
+  SUBMIT_REPORT: "/submit-report",
 };

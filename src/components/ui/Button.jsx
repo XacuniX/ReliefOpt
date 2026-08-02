@@ -1,104 +1,46 @@
-import { useState } from "react";
+import { cn } from "../../lib/utils";
 
-const sizeMap = {
-  sm: { padding: "6px 12px", fontSize: "13px" },
-  md: { padding: "10px 20px", fontSize: "15px" },
-  lg: { padding: "14px 28px", fontSize: "17px" },
+const variants = {
+  default: "bg-primary text-primary-foreground hover:brightness-110",
+  destructive: "bg-destructive text-destructive-foreground hover:brightness-110",
+  outline: "border border-border bg-background hover:bg-accent hover:text-accent-foreground",
+  ghost: "hover:bg-accent hover:text-accent-foreground",
+  link: "text-primary underline-offset-4 hover:underline",
 };
 
-const spinnerKeyframes = `
-@keyframes reliefopt-btn-spin {
-  to { transform: rotate(360deg); }
-}`;
-
-// Inject keyframes once
-if (typeof document !== "undefined") {
-  const id = "reliefopt-btn-spin-style";
-  if (!document.getElementById(id)) {
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = spinnerKeyframes;
-    document.head.appendChild(style);
-  }
-}
+const sizes = {
+  sm: "h-8 px-3 text-xs",
+  md: "h-10 px-4 text-sm",
+  lg: "h-12 px-6 text-base",
+};
 
 export default function Button({
-  variant = "primary",
+  variant = "default",
   size = "md",
   loading = false,
   onClick,
   children,
   disabled = false,
-  style: extraStyle,
+  className,
   type = "button",
   ...props
 }) {
-  const [hovered, setHovered] = useState(false);
-
-  const base = {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    border: "none",
-    borderRadius: "6px",
-    fontWeight: 600,
-    cursor: disabled || loading ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.5 : 1,
-    transition: "all 0.2s ease",
-    fontFamily: "inherit",
-    lineHeight: 1.4,
-    ...sizeMap[size] || sizeMap.md,
-  };
-
-  const variants = {
-    primary: {
-      background: `var(--color-teal)`,
-      color: `var(--color-white)`,
-      border: "none",
-      ...(hovered && !disabled && !loading
-        ? { filter: "brightness(1.1)" }
-        : {}),
-    },
-    danger: {
-      background: "#C0392B",
-      color: `var(--color-white)`,
-      border: "none",
-      ...(hovered && !disabled && !loading
-        ? { filter: "brightness(1.1)" }
-        : {}),
-    },
-    ghost: {
-      background: "transparent",
-      color: `var(--color-navy)`,
-      border: `1.5px solid var(--color-navy)`,
-      ...(hovered && !disabled && !loading
-        ? { background: "var(--color-smoke)" }
-        : {}),
-    },
-  };
-
-  const spinnerStyle = {
-    display: "inline-block",
-    width: size === "sm" ? "12px" : size === "lg" ? "18px" : "14px",
-    height: size === "sm" ? "12px" : size === "lg" ? "18px" : "14px",
-    border: "2px solid transparent",
-    borderTopColor: "currentColor",
-    borderRadius: "50%",
-    animation: "reliefopt-btn-spin 0.6s linear infinite",
-  };
-
   return (
     <button
       type={type}
-      style={{ ...base, ...variants[variant], ...extraStyle }}
-      onClick={disabled || loading ? undefined : onClick}
       disabled={disabled || loading}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onClick={disabled || loading ? undefined : onClick}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 rounded-md font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+        variants[variant] || variants.default,
+        sizes[size] || sizes.md,
+        className
+      )}
       {...props}
     >
-      {loading && <span style={spinnerStyle} />}
+      {loading && (
+        <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-transparent border-t-current animate-[spin_0.6s_linear_infinite]" />
+      )}
       {children}
     </button>
   );

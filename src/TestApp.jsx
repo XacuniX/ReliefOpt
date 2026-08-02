@@ -1,16 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "./context/AuthContext";
-import {
-  Button,
-  Input,
-  Select,
-  Textarea,
-  Badge,
-  Card,
-  Loader,
-  Modal,
-  Toast,
-} from "./components/ui";
+import { Button, Input, Select, Textarea, Badge, Card, Loader, Modal, Toast } from "./components/ui";
 import RoleGate from "./components/RoleGate";
 
 export default function TestApp() {
@@ -18,73 +8,45 @@ export default function TestApp() {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 4 }}>ReliefOpt — Component Test Harness</h1>
-      <p style={{ marginTop: 0, opacity: 0.6 }}>Temporary render — delete this file before production.</p>
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold mb-1">ReliefOpt — Component Test Harness</h1>
+      <p className="text-muted-foreground text-sm">Temporary render — delete before production.</p>
 
-      <h2 className="section">Auth Context</h2>
-      <p>
-        Current role: <strong>{currentUser.role}</strong> (id: {currentUser.id}, name: {currentUser.name})
-      </p>
-      <Button variant="ghost" size="sm" onClick={() => setRole("field_worker")}>
-        Switch to field_worker
-      </Button>{" "}
-      <Button variant="ghost" size="sm" onClick={() => setRole("warehouse_manager")}>
-        Switch to warehouse_manager
-      </Button>{" "}
-      <Button variant="ghost" size="sm" onClick={() => setRole("central_admin")}>
-        Switch to central_admin
-      </Button>
-
-      <h2 className="section">RoleGate (central_admin only)</h2>
-      <RoleGate allowed={["central_admin"]}>
-        <Button variant="primary">Admin-Only Button (visible)</Button>
-      </RoleGate>
-      <p style={{ fontSize: 13, opacity: 0.5 }}>
-        If you switch role away from central_admin, the button above disappears.
-      </p>
-
-      <h2 className="section">Button Variants</h2>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <Button variant="primary">Primary</Button>
-        <Button variant="danger">Danger</Button>
-        <Button variant="ghost">Ghost</Button>
-        <Button variant="primary" loading={true}>Loading…</Button>
-        <Button variant="primary" disabled>Disabled</Button>
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Auth Context</h2>
+      <p>Current role: <strong>{currentUser.role}</strong> (id: {currentUser.id}, name: {currentUser.name})</p>
+      <div className="flex gap-2 flex-wrap mt-2">
+        <Button variant="outline" size="sm" onClick={() => setRole("field_worker")}>Field Worker</Button>
+        <Button variant="outline" size="sm" onClick={() => setRole("warehouse_manager")}>Warehouse Manager</Button>
+        <Button variant="outline" size="sm" onClick={() => setRole("central_admin")}>Central Admin</Button>
       </div>
 
-      <h2 className="section">Input (with error)</h2>
-      <Input
-        label="Email Address"
-        placeholder="you@example.com"
-        value=""
-        onChange={() => {}}
-        error="This field is required"
-      />
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">RoleGate</h2>
+      <RoleGate allowed={["central_admin"]}><Button>Admin-Only</Button></RoleGate>
+      <p className="text-sm text-muted-foreground mt-1">Switch role away from central_admin — button disappears.</p>
 
-      <h2 className="section">Select</h2>
-      <Select
-        label="Warehouse"
-        value="wh-a"
-        onChange={() => {}}
-        options={[
-          { value: "wh-a", label: "Warehouse A — Dhaka" },
-          { value: "wh-b", label: "Warehouse B — Chattogram" },
-          { value: "wh-c", label: "Warehouse C — Sylhet" },
-        ]}
-      />
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Button Variants</h2>
+      <div className="flex gap-3 flex-wrap items-center">
+        <Button>Default</Button>
+        <Button variant="destructive">Destructive</Button>
+        <Button variant="outline">Outline</Button>
+        <Button variant="ghost">Ghost</Button>
+        <Button loading>Loading...</Button>
+        <Button disabled>Disabled</Button>
+      </div>
 
-      <h2 className="section">Textarea</h2>
-      <Textarea
-        label="Incident Description"
-        placeholder="Describe the situation on the ground…"
-        value=""
-        onChange={() => {}}
-        rows={3}
-      />
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Input</h2>
+      <Input label="Email" placeholder="you@example.com" value="" onChange={() => {}} error="Required field" />
 
-      <h2 className="section">Badge (all 6 colors)</h2>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Select</h2>
+      <Select label="Warehouse" value="wh-a" onChange={() => {}} options={[
+        { value: "wh-a", label: "Warehouse A" }, { value: "wh-b", label: "Warehouse B" }, { value: "wh-c", label: "Warehouse C" }
+      ]} />
+
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Textarea</h2>
+      <Textarea label="Description" placeholder="Describe..." value="" onChange={() => {}} rows={3} />
+
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Badges</h2>
+      <div className="flex gap-2 flex-wrap">
         <Badge color="green" text="Active" />
         <Badge color="red" text="Critical" />
         <Badge color="amber" text="Warning" />
@@ -93,37 +55,30 @@ export default function TestApp() {
         <Badge color="grey" text="Offline" />
       </div>
 
-      <h2 className="section">Card</h2>
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Card</h2>
       <Card>
         <strong>Relief Operation Summary</strong>
-        <p style={{ margin: "8px 0 0" }}>
-          3 teams deployed across Sylhet, Barishal, and Cumilla districts. 
-          52,000 people in affected zones. Inventory levels stable except Warehouse E.
-        </p>
+        <p className="mt-2">3 teams deployed. 52,000 people affected. Inventory stable.</p>
       </Card>
 
-      <h2 className="section">Loader (sm / md / lg)</h2>
-      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Loader</h2>
+      <div className="flex items-center gap-6">
         <Loader size="sm" />
         <Loader size="md" />
         <Loader size="lg" />
       </div>
 
-      <h2 className="section">Modal</h2>
-      <Button variant="ghost" onClick={() => setModalOpen(true)}>Open Modal</Button>
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Confirm Deployment"
-      >
-        <p>Deploy Sylhet Flood Response team to Companiganj upazila?</p>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <Button variant="ghost" onClick={() => console.log("closed")}>Cancel</Button>
-          <Button variant="primary" onClick={() => console.log("confirmed")}>Deploy</Button>
+      <h2 className="text-base uppercase tracking-wider opacity-60 mt-8 mb-3 font-bold">Modal</h2>
+      <Button variant="outline" onClick={() => setModalOpen(true)}>Open Modal</Button>
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Confirm">
+        <p>Deploy Sylhet Flood Response team?</p>
+        <div className="flex gap-2 justify-end mt-4">
+          <Button variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
+          <Button onClick={() => setModalOpen(false)}>Deploy</Button>
         </div>
       </Modal>
 
-      <Toast type="success" message="System ready" onDismiss={() => console.log("toast dismissed")} />
+      <Toast type="success" message="System ready" onDismiss={() => {}} />
     </div>
   );
 }

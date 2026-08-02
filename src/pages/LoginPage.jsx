@@ -9,39 +9,6 @@ const roles = [
   { value: "central_admin", label: "Central Admin" },
 ];
 
-const pageStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "calc(100vh - 48px)",
-};
-
-const cardStyle = {
-  width: 400,
-  maxWidth: "100%",
-  padding: "var(--space-8)",
-};
-
-const headingStyle = {
-  fontSize: "var(--text-2xl)",
-  fontWeight: 800,
-  color: "var(--color-navy)",
-  margin: "0 0 var(--space-6)",
-  textAlign: "center",
-};
-
-const bannerStyle = {
-  marginTop: "var(--space-5)",
-  padding: "var(--space-3) var(--space-4)",
-  background: "rgba(243, 156, 18, 0.12)",
-  border: "1px solid rgba(243, 156, 18, 0.3)",
-  borderRadius: 6,
-  fontSize: "var(--text-sm)",
-  color: "var(--color-amber)",
-  textAlign: "center",
-  fontWeight: 500,
-};
-
 export default function LoginPage() {
   const { setRole } = useAuth();
   const navigate = useNavigate();
@@ -62,9 +29,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={pageStyle}>
-      <Card style={cardStyle}>
-        <h1 style={headingStyle}>ReliefOpt</h1>
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 px-4">
+      <Card className="w-full max-w-md p-8">
+        <h1 className="text-2xl font-extrabold text-foreground text-center mb-6">
+          Relief<span className="text-primary">Opt</span>
+        </h1>
         <form onSubmit={handleSubmit}>
           <Input
             label="Username"
@@ -85,11 +54,11 @@ export default function LoginPage() {
             onChange={(e) => setSelectedRole(e.target.value)}
             options={roles}
           />
-          <Button type="submit" loading={loading} style={{ width: "100%", marginTop: "var(--space-2)" }}>
+          <Button type="submit" loading={loading} className="w-full mt-2">
             Sign In
           </Button>
         </form>
-        <div style={bannerStyle}>
+        <div className="mt-5 p-3 bg-amber-500/10 border border-amber-500/30 rounded-md text-sm text-amber-600 dark:text-amber-400 text-center font-medium">
           Offline Mode Available — data will sync when connected
         </div>
       </Card>

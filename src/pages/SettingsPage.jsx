@@ -1,80 +1,67 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Badge, Button, Card } from "../components/ui";
-
-const sectionStyle = { marginBottom: "var(--space-8)" };
-const sectionTitle = { fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-4)" };
-const rowStyle = { marginBottom: "var(--space-3)", fontSize: 14 };
-
-const roleColors = { central_admin: "navy", warehouse_manager: "amber", field_worker: "teal" };
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
 
 export default function SettingsPage() {
   const { currentUser } = useAuth();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [language, setLanguage] = useState("English");
   const [cacheSize, setCacheSize] = useState(50);
   const [notifSound, setNotifSound] = useState(true);
 
-  const initials = currentUser.name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const roleColors = { central_admin: "navy", warehouse_manager: "amber", field_worker: "teal" };
 
   function clearCache() {
     console.log("Cache cleared");
   }
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto" }}>
-      <h1 style={{ fontSize: "var(--text-2xl)", margin: "0 0 var(--space-6)" }}>Settings</h1>
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
 
-      <section style={sectionStyle}>
-        <h2 style={sectionTitle}>Profile</h2>
+      <section className="mb-8">
+        <h2 className="text-lg font-bold mb-4">Profile</h2>
         <Card>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-            <span
-              aria-label={`${currentUser.name} avatar`}
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: "50%",
-                background: "var(--color-teal)",
-                color: "var(--color-white)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 18,
-                fontWeight: 700,
-              }}
-            >
-              {initials}
+          <div className="flex items-center gap-4 mb-4">
+            <span className="h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold">
+              {currentUser.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
             </span>
             <div>
-              <p style={{ fontWeight: 700, margin: 0 }}>{currentUser.name}</p>
-              <Badge color={roleColors[currentUser.role]} text={currentUser.role.replaceAll("_", " ")} />
+              <p className="font-bold">{currentUser.name}</p>
+              <Badge color={roleColors[currentUser.role]} text={currentUser.role.replace(/_/g, " ")} />
             </div>
           </div>
-          <p style={rowStyle}><strong>User ID:</strong> {currentUser.id}</p>
+          <p className="text-sm"><strong>User ID:</strong> {currentUser.id}</p>
         </Card>
       </section>
 
-      <section style={sectionStyle}>
-        <h2 style={sectionTitle}>Preferences</h2>
+      <section className="mb-8">
+        <h2 className="text-lg font-bold mb-4">Preferences</h2>
         <Card>
-          <div style={rowStyle}>
-            <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="mb-4 text-sm">
+            <label className="flex items-center justify-between">
+              <span>Theme</span>
+              <select
+                value={theme}
+                onChange={(e) => setTheme(e.target.value)}
+                className="rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mb-4 text-sm">
+            <label className="flex items-center justify-between">
               <span>Language</span>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                style={{
-                  padding: "6px 10px",
-                  border: "1.5px solid var(--color-mid)",
-                  borderRadius: 6,
-                  font: "inherit",
-                  fontSize: 13,
-                }}
+                className="rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="English">English</option>
                 <option value="Bangla">Bangla</option>
@@ -82,11 +69,9 @@ export default function SettingsPage() {
             </label>
           </div>
 
-          <div style={rowStyle}>
+          <div className="mb-4 text-sm">
             <label>
-              <span style={{ display: "block", marginBottom: 6 }}>
-                Map tile cache size: {cacheSize} MB
-              </span>
+              <span className="block mb-1.5">Map tile cache size: {cacheSize} MB</span>
               <input
                 type="range"
                 min="10"
@@ -94,18 +79,18 @@ export default function SettingsPage() {
                 step="10"
                 value={cacheSize}
                 onChange={(e) => setCacheSize(Number(e.target.value))}
-                style={{ width: "100%", accentColor: "var(--color-teal)" }}
+                className="w-full accent-primary"
               />
             </label>
           </div>
 
-          <div style={rowStyle}>
-            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+          <div className="text-sm">
+            <label className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={notifSound}
                 onChange={(e) => setNotifSound(e.target.checked)}
-                style={{ accentColor: "var(--color-teal)" }}
+                className="accent-primary"
               />
               Notification sounds
             </label>
@@ -113,17 +98,15 @@ export default function SettingsPage() {
         </Card>
       </section>
 
-      <section style={sectionStyle}>
-        <h2 style={sectionTitle}>About</h2>
+      <section className="mb-8">
+        <h2 className="text-lg font-bold mb-4">About</h2>
         <Card>
-          <p style={rowStyle}><strong>App Version:</strong> v0.0.1</p>
-          <p style={rowStyle}><strong>Last Sync:</strong> {new Date().toLocaleString()}</p>
-          <p style={rowStyle}><strong>Cache Status:</strong> Active</p>
-          <Button variant="ghost" size="sm" onClick={clearCache}>
-            Clear Cache
-          </Button>
+          <p className="text-sm mb-2"><strong>App Version:</strong> v0.0.1</p>
+          <p className="text-sm mb-2"><strong>Last Sync:</strong> {new Date().toLocaleString()}</p>
+          <p className="text-sm mb-4"><strong>Cache Status:</strong> Active</p>
+          <Button variant="outline" size="sm" onClick={clearCache}>Clear Cache</Button>
         </Card>
       </section>
-    </main>
+    </div>
   );
 }

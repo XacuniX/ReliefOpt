@@ -2,30 +2,6 @@ import { useState } from "react";
 
 const dismissedKey = "reliefopt-low-stock-alert-dismissed";
 
-const styles = {
-  alert: {
-    alignItems: "flex-start",
-    background: "rgba(243, 156, 18, 0.16)",
-    border: "1px solid rgba(212, 136, 15, 0.36)",
-    borderRadius: 8,
-    color: "var(--color-navy)",
-    display: "flex",
-    gap: 12,
-    marginBottom: 24,
-    padding: "14px 16px",
-  },
-  icon: { color: "#B76E00", fontSize: 20, lineHeight: "20px" },
-  content: { flex: 1, lineHeight: 1.55 },
-  link: {
-    background: "none", border: "none", color: "#9A5A00", cursor: "pointer",
-    font: "inherit", fontWeight: 700, padding: 0, textDecoration: "underline",
-  },
-  close: {
-    background: "transparent", border: "none", color: "#7C4A03", cursor: "pointer",
-    fontSize: 22, lineHeight: 1, padding: "0 0 0 8px",
-  },
-};
-
 export default function LowStockAlert({ items, onItemSelect }) {
   const [dismissed, setDismissed] = useState(() => sessionStorage.getItem(dismissedKey) === "true");
   const criticalItems = items.filter((item) => item.qty < 10).sort((a, b) => a.qty - b.qty).slice(0, 3);
@@ -38,18 +14,20 @@ export default function LowStockAlert({ items, onItemSelect }) {
   if (dismissed || !criticalItems.length) return null;
 
   return (
-    <aside style={styles.alert} aria-label="Low stock alert">
-      <span aria-hidden="true" style={styles.icon}>⚠</span>
-      <div style={styles.content}>
+    <aside className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-foreground p-4 mb-6">
+      <span className="text-amber-600 dark:text-amber-400 text-xl leading-5">⚠</span>
+      <div className="flex-1 leading-relaxed text-sm">
         <strong>3 items are critically low: </strong>
         {criticalItems.map((item, index) => (
           <span key={item.id}>
             {index > 0 && ", "}
-            <button type="button" style={styles.link} onClick={() => onItemSelect(item)}>{item.name}</button>
+            <button type="button" className="font-bold underline text-amber-700 dark:text-amber-400 hover:text-amber-500" onClick={() => onItemSelect(item)}>
+              {item.name}
+            </button>
           </span>
         ))}
       </div>
-      <button type="button" aria-label="Dismiss low stock alert" onClick={dismiss} style={styles.close}>×</button>
+      <button type="button" aria-label="Dismiss low stock alert" onClick={dismiss} className="text-amber-700 dark:text-amber-400 text-xl leading-none">&times;</button>
     </aside>
   );
 }

@@ -35,19 +35,19 @@ export default function ItemFormModal({ item, isOpen, onClose, onSave }) {
     <Modal isOpen={isOpen} onClose={onClose} title={item ? "Edit Item" : "Add Item"}>
       <Input label="Item Name" value={form.name} onChange={(event) => setField("name", event.target.value)} />
       <Select label="Category" value={form.category} onChange={(event) => setField("category", event.target.value)} options={categories.map((value) => ({ value, label: value }))} />
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Quantity</label>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Button size="sm" variant="ghost" onClick={() => changeQuantity(-1)} aria-label="Decrease quantity">−</Button>
-          <Input type="number" value={String(form.qty)} onChange={(event) => setField("qty", event.target.value)} style={{ flex: 1, marginBottom: 0 }} />
-          <Button size="sm" variant="ghost" onClick={() => changeQuantity(1)} aria-label="Increase quantity">+</Button>
+      <div className="mb-4">
+        <label className="block mb-1.5 text-sm font-semibold">Quantity</label>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => changeQuantity(-1)} aria-label="Decrease quantity">−</Button>
+          <Input type="number" value={String(form.qty)} onChange={(event) => setField("qty", event.target.value)} className="flex-1" />
+          <Button size="sm" variant="outline" onClick={() => changeQuantity(1)} aria-label="Increase quantity">+</Button>
         </div>
       </div>
       <Select label="Unit" value={form.unit} onChange={(event) => setField("unit", event.target.value)} options={units.map((value) => ({ value, label: value }))} />
       <Select label="Warehouse" value={form.warehouse} onChange={(event) => setField("warehouse", event.target.value)} options={warehouses.map((value) => ({ value, label: value }))} />
       <Input label="Expiry Date (optional)" type="date" value={form.expiryDate} onChange={(event) => setField("expiryDate", event.target.value)} />
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button onClick={handleSave} disabled={!form.name.trim()}>Save</Button>
       </div>
     </Modal>

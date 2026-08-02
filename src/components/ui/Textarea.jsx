@@ -1,3 +1,5 @@
+import { cn } from "../../lib/utils";
+
 export default function Textarea({
   label,
   value,
@@ -6,60 +8,31 @@ export default function Textarea({
   placeholder,
   error,
   disabled = false,
-  style: extraStyle,
+  className,
+  id,
 }) {
-  const labelStyle = {
-    display: "block",
-    marginBottom: "6px",
-    fontSize: "14px",
-    fontWeight: 600,
-    color: "var(--color-navy)",
-  };
-
-  const textareaStyle = {
-    width: "100%",
-    padding: "10px 12px",
-    fontSize: "15px",
-    fontFamily: "inherit",
-    border: error
-      ? "1.5px solid #C0392B"
-      : "1.5px solid var(--color-mid)",
-    borderRadius: "6px",
-    outline: "none",
-    background: disabled ? "var(--color-smoke)" : "var(--color-white)",
-    color: "var(--color-navy)",
-    transition: "border-color 0.2s ease",
-    boxSizing: "border-box",
-    resize: "vertical",
-    opacity: disabled ? 0.6 : 1,
-  };
-
-  const errorStyle = {
-    marginTop: "4px",
-    fontSize: "13px",
-    color: "#C0392B",
-  };
+  const textareaId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
   return (
-    <div style={{ marginBottom: "16px", ...extraStyle }}>
-      {label && <label style={labelStyle}>{label}</label>}
+    <div className={cn("mb-4", className)}>
+      {label && (
+        <label htmlFor={textareaId} className="block mb-1.5 text-sm font-semibold text-foreground">
+          {label}
+        </label>
+      )}
       <textarea
+        id={textareaId}
         rows={rows}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
         disabled={disabled}
-        style={textareaStyle}
-        onFocus={(e) => {
-          e.target.style.borderColor = "var(--color-teal)";
-        }}
-        onBlur={(e) => {
-          e.target.style.borderColor = error
-            ? "#C0392B"
-            : "var(--color-mid)";
-        }}
+        className={cn(
+          "w-full rounded-md border bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
+          error ? "border-red-500" : "border-border"
+        )}
       />
-      {error && <div style={errorStyle}>{error}</div>}
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 }

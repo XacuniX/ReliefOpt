@@ -6,18 +6,22 @@ import PackingCanvas from "../components/cargo/PackingCanvas";
 
 function CargoContent() {
   const [optimized, setOptimized] = useState(false);
+
   return (
-    <main style={{ maxWidth: 1500, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 28, margin: "0 0 24px" }}>🚚 Cargo Packing Optimizer</h1>
-      <style>{`@keyframes cargo-result-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } } @media (max-width: 800px) { .cargo-layout { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
-      <div className="cargo-layout" style={{ alignItems: "start", display: "grid", gap: 24, gridTemplateColumns: optimized ? "minmax(0, 1fr) minmax(0, 1fr)" : "minmax(0, 1fr)" }}>
+    <div className="max-w-7xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">🚚 Cargo Packing Optimizer</h1>
+      <div className={`grid gap-6 ${optimized ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
         <CargoInputForm onOptimized={() => setOptimized(true)} />
-        {optimized && <section style={{ animation: "cargo-result-fade .35s ease" }} aria-label="Packing result">
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}><Button size="sm" variant="ghost" onClick={() => window.print()}>Print Plan</Button></div>
-          <PackingCanvas />
-        </section>}
+        {optimized && (
+          <section className="animate-[dialog-slide-up_0.35s_ease]">
+            <div className="flex justify-end mb-2.5">
+              <Button size="sm" variant="outline" onClick={() => window.print()}>Print Plan</Button>
+            </div>
+            <PackingCanvas />
+          </section>
+        )}
       </div>
-    </main>
+    </div>
   );
 }
 

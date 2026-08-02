@@ -3,86 +3,35 @@ import KpiCards from "../components/dashboard/KpiCards";
 import TeamTable from "../components/dashboard/TeamTable";
 import AlertFeed from "../components/dashboard/AlertFeed";
 import ChartPanel from "../components/dashboard/ChartPanel";
-
-const pageStyle = {
-  maxWidth: 1280,
-  margin: "0 auto",
-};
-
-const headerStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  marginBottom: "var(--space-6)",
-};
-
-const titleStyle = {
-  fontSize: "var(--text-2xl)",
-  margin: 0,
-};
-
-const subtitleStyle = {
-  color: "var(--color-mid)",
-  margin: "4px 0 0",
-  fontSize: "var(--text-sm)",
-};
-
-const refreshBtn = {
-  background: "transparent",
-  border: "1.5px solid var(--color-mid)",
-  borderRadius: "50%",
-  width: 40,
-  height: 40,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-  fontSize: 18,
-  color: "var(--color-mid)",
-  transition: "all 0.2s",
-};
+import { Button } from "../components/ui";
+import { RefreshCw } from "lucide-react";
 
 function DashboardContent() {
-  function handleRefresh() {
-    // future: refetch data
-  }
+  function handleRefresh() {}
 
   return (
-    <main style={pageStyle}>
-      <div style={headerStyle}>
+    <div className="max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 style={titleStyle}>Operations Dashboard</h1>
-          <p style={subtitleStyle}>Last Updated: just now</p>
+          <h1 className="text-2xl font-bold text-foreground">Operations Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Last Updated: just now</p>
         </div>
-        <button
-          type="button"
-          style={refreshBtn}
-          onClick={handleRefresh}
-          aria-label="Refresh dashboard"
-          onMouseEnter={(e) => {
-            e.target.style.borderColor = "var(--color-teal)";
-            e.target.style.color = "var(--color-teal)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.borderColor = "var(--color-mid)";
-            e.target.style.color = "var(--color-mid)";
-          }}
-        >
-          ⟳
-        </button>
+        <Button variant="ghost" size="icon" onClick={handleRefresh} aria-label="Refresh dashboard">
+          <RefreshCw className="h-5 w-5" />
+        </Button>
       </div>
 
       <KpiCards />
 
-      <div className="dashboard-grid">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 mt-6">
         <TeamTable />
         <AlertFeed />
       </div>
 
-      <div style={{ marginTop: "var(--space-6)" }}>
+      <div className="mt-6">
         <ChartPanel />
       </div>
-    </main>
+    </div>
   );
 }
 

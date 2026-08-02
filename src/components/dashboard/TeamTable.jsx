@@ -3,7 +3,6 @@ import { Badge, Card } from "../ui";
 import { teams } from "../../mockData";
 
 const statusColors = { Deployed: "green", Standby: "amber", Offline: "grey" };
-const rowTint = { Deployed: "rgba(39,174,96,.04)", Standby: "rgba(243,156,18,.04)", Offline: "rgba(189,195,199,.06)" };
 
 const columns = [
   { key: "id", label: "Team ID" },
@@ -13,29 +12,6 @@ const columns = [
   { key: "lastSync", label: "Last Sync" },
   { key: "activeTask", label: "Assigned Task" },
 ];
-
-const headerStyle = {
-  background: "#F8FAFC",
-  color: "#64748b",
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.04em",
-  padding: "12px 16px",
-  textAlign: "left",
-  textTransform: "uppercase",
-  whiteSpace: "nowrap",
-};
-
-const sortBtn = {
-  background: "transparent",
-  border: "none",
-  color: "inherit",
-  cursor: "pointer",
-  font: "inherit",
-  fontSize: 12,
-  fontWeight: 700,
-  padding: 0,
-};
 
 export default function TeamTable() {
   const [sort, setSort] = useState({ key: "id", direction: "asc" });
@@ -58,16 +34,23 @@ export default function TeamTable() {
 
   return (
     <section aria-label="Team deployment status">
-      <h2 style={{ fontSize: "var(--text-lg)", margin: "0 0 var(--space-3)" }}>Team Deployment Status</h2>
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ borderCollapse: "collapse", minWidth: 780, width: "100%" }}>
+      <h2 className="text-lg font-bold mb-3">Team Deployment Status</h2>
+      <Card className="p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[780px] text-sm">
             <thead>
-              <tr>
+              <tr className="bg-muted/50">
                 {columns.map(({ key, label }) => (
-                  <th key={key} scope="col" style={headerStyle}>
-                    <button type="button" onClick={() => toggleSort(key)} style={sortBtn}>
-                      {label}{sort.key === key ? (sort.direction === "asc" ? " ▲" : " ▼") : ""}
+                  <th key={key} scope="col" className="px-4 py-3 text-left">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(key)}
+                      className="text-xs font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                    >
+                      {label}
+                      {sort.key === key && (
+                        <span className="ml-1">{sort.direction === "asc" ? "▲" : "▼"}</span>
+                      )}
                     </button>
                   </th>
                 ))}
@@ -75,19 +58,15 @@ export default function TeamTable() {
             </thead>
             <tbody>
               {sorted.map((team) => (
-                <tr key={team.id} style={{ background: rowTint[team.status] || "transparent" }}>
-                  <td style={{ borderTop: "1px solid #E2E8F0", padding: "12px 16px", whiteSpace: "nowrap" }}>{team.id}</td>
-                  <td style={{ borderTop: "1px solid #E2E8F0", padding: "12px 16px", fontWeight: 600 }}>{team.leader}</td>
-                  <td style={{ borderTop: "1px solid #E2E8F0", padding: "12px 16px" }}>{team.location}</td>
-                  <td style={{ borderTop: "1px solid #E2E8F0", padding: "12px 16px" }}>
+                <tr key={team.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap">{team.id}</td>
+                  <td className="px-4 py-3 font-semibold">{team.leader}</td>
+                  <td className="px-4 py-3">{team.location}</td>
+                  <td className="px-4 py-3">
                     <Badge color={statusColors[team.status]} text={team.status} />
                   </td>
-                  <td style={{ borderTop: "1px solid #E2E8F0", padding: "12px 16px", whiteSpace: "nowrap" }}>
-                    {team.lastSync || "N/A"}
-                  </td>
-                  <td style={{ borderTop: "1px solid #E2E8F0", padding: "12px 16px", maxWidth: 240 }}>
-                    {team.activeTask || "—"}
-                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">{team.lastSync || "N/A"}</td>
+                  <td className="px-4 py-3 max-w-[240px]">{team.activeTask || "—"}</td>
                 </tr>
               ))}
             </tbody>
