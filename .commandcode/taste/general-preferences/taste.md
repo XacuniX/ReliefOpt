@@ -6,4 +6,5 @@
 - Prefers mobile UI to have feature parity with desktop — key actions like sign-out must be accessible on both form factors. Confidence: 0.6
 - Prefers hiding developer/debug overlays (e.g., demo switchers, role toggles) from the user-facing UI when the app is in a demo-ready state. Confidence: 0.6
 - Values eye-friendly, comfortable color schemes — light mode should avoid harsh/sterile whites and use softer tones. Confidence: 0.6
+- Prefers tables to visually stand out from the page background — alternating row colors (zebra striping) or other differentiation so rows don't blend into the surrounding surface. Confidence: 0.7
 - Prefers dark mode palettes that feel professional and industry-relevant — not generic or overly playful. Confidence: 0.6

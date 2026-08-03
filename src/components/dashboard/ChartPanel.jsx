@@ -4,8 +4,8 @@ import { Card } from "../ui";
 import { inventory, reports } from "../../mockData";
 import { useTheme } from "../../context/ThemeContext";
 
-const lightColors = ["#0f172a", "#0f766e", "#d97706", "#dc2626", "#94a3b8"];
-const darkColors = ["#e2e8f0", "#14b8a6", "#f59e0b", "#ef4444", "#64748b"];
+const lightColors = ["#0d9488", "#f59e0b", "#0369a1", "#e53e3e", "#6b7280"];
+const darkColors = ["#2dd4bf", "#f59e0b", "#38bdf8", "#f75555", "#8895a9"];
 
 export default function ChartPanel() {
   const { resolvedTheme } = useTheme();
@@ -36,11 +36,11 @@ export default function ChartPanel() {
           <h3 className="text-sm font-semibold text-foreground mb-2">Supply Distribution by Warehouse</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={barData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#e2e8f0"} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#64748b" }} />
-              <YAxis tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#64748b" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#1f2a3d" : "#e0e4ea"} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: isDark ? "#8895a9" : "#6b7280" }} />
+              <YAxis tick={{ fontSize: 11, fill: isDark ? "#8895a9" : "#6b7280" }} />
               <Tooltip />
-              <Bar dataKey="supplies" fill={isDark ? "#14b8a6" : "#0f766e"} radius={[4, 4, 0, 0]} name="Supply Qty" />
+              <Bar dataKey="supplies" fill={isDark ? "#2dd4bf" : "#0d9488"} radius={[4, 4, 0, 0]} name="Supply Qty" />
             </BarChart>
           </ResponsiveContainer>
         </Card>
