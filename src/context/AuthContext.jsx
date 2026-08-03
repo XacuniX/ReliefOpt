@@ -11,13 +11,25 @@ function AuthProvider({ children }) {
     name: defaultAdmin.name,
     role: defaultAdmin.role,
   });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const login = (role) => {
+    const user = users.find((u) => u.role === role) || defaultAdmin;
+    setCurrentUser({ id: user.id, name: user.name, role: user.role });
+    setIsAuthenticated(true);
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser({ id: defaultAdmin.id, name: defaultAdmin.name, role: defaultAdmin.role });
+  };
 
   const setRole = (role) => {
     setCurrentUser((prev) => ({ ...prev, role }));
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, setRole }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated, setRole, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

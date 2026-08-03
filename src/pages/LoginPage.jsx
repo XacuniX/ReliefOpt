@@ -10,7 +10,7 @@ const roles = [
 ];
 
 export default function LoginPage() {
-  const { setRole } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -22,9 +22,9 @@ export default function LoginPage() {
     if (!username.trim() || !password.trim()) return;
     setLoading(true);
     setTimeout(() => {
-      setRole(selectedRole);
+      login(selectedRole);
       setLoading(false);
-      navigate("/dashboard");
+      navigate(selectedRole === "field_worker" ? "/map" : "/dashboard");
     }, 500);
   }
 

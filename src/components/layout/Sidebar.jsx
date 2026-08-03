@@ -1,8 +1,8 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Map, FileText, Pencil, Package,
   CheckSquare, Truck, Users, Settings, Sun, Moon,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, LogOut
 } from "lucide-react";
 import { ROUTES } from "../../routes";
 import RoleGate from "../RoleGate";
@@ -26,7 +26,8 @@ const navItems = [
 
 export default function Sidebar({ collapsed, onToggleCollapse }) {
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
 
   const isActive = (route) => location.pathname.startsWith(route);
@@ -124,6 +125,13 @@ export default function Sidebar({ collapsed, onToggleCollapse }) {
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => { logout(); navigate("/login"); }}
+            className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>

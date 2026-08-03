@@ -25,7 +25,7 @@ export default function AppLayout() {
     <>
       <Sidebar collapsed={collapsed} onToggleCollapse={handleToggleCollapse} />
       <main
-        className={`min-h-screen transition-all duration-200 pt-14 md:pt-0 pb-20 md:pb-6 ${collapsed ? "md:pl-16" : "md:pl-60"}`}
+        className={`min-h-screen transition-all duration-200 px-4 pt-14 md:pt-0 pb-20 md:pb-6 ${collapsed ? "md:pl-16" : "md:pl-60"}`}
       >
         <div className="fixed top-2 right-16 z-[100] hidden md:block">
           <SyncIndicator />

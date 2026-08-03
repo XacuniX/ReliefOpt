@@ -8,7 +8,7 @@ const roles = [
 ];
 
 export default function DemoSwitcher() {
-  const { currentUser, setRole } = useAuth();
+  const { currentUser, login } = useAuth();
   const { isOffline, toggleOffline } = useOffline();
 
   return (
@@ -26,7 +26,7 @@ export default function DemoSwitcher() {
                   ? "bg-primary text-primary-foreground"
                   : "text-card-foreground hover:bg-primary/20"
               }`}
-              onClick={() => setRole(key)}
+              onClick={() => login(key)}
             >
               {label}
             </button>
