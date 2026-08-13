@@ -8,3 +8,8 @@
 - Values eye-friendly, comfortable color schemes — light mode should avoid harsh/sterile whites and use softer tones. Confidence: 0.6
 - Prefers tables to visually stand out from the page background — alternating row colors (zebra striping) or other differentiation so rows don't blend into the surrounding surface. Confidence: 0.7
 - Prefers dark mode palettes that feel professional and industry-relevant — not generic or overly playful. Confidence: 0.6
+- Prefers pasted task specs/code to be implemented faithfully as given — exact code, function names, and arguments preserved rather than adapted or "improved." Confidence: 0.7
+- Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"). Confidence: 0.8
+- Prefers to receive commit messages as ready-to-paste text rather than having the agent run the git commit itself — wants to control when commits happen ("dont do a commit yourself, just make me the message"). Confidence: 0.7
+- Prefers pasted task specs/code to be implemented faithfully as given — exact code, function names, and arguments preserved rather than adapted or "improved." Confidence: 0.7
+- Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"). Confidence: 0.8

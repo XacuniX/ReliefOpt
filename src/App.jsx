@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ROUTES } from "./routes";
 import { useAuth } from "./context/AuthContext";
 import { OfflineProvider } from "./context/OfflineContext";
+import { DataProvider } from "./context/DataContext";
 import NotifDrawer from "./components/notifications/NotifDrawer";
 import AppLayout from "./components/layout/AppLayout";
 import TestApp from "./TestApp";
@@ -60,7 +61,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <OfflineProvider>
-        <AuthRoutes />
+        <DataProvider>
+          <AuthRoutes />
+        </DataProvider>
       </OfflineProvider>
     </BrowserRouter>
   );
