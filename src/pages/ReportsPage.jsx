@@ -26,8 +26,8 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
-  const [sortKey, setSortKey] = useState(null);
-  const [sortDir, setSortDir] = useState("asc");
+  const [sortKey, setSortKey] = useState("urgencyScore");
+  const [sortDir, setSortDir] = useState("desc");
 
   const filtered = useMemo(() => {
     let result = [...reports];
@@ -105,6 +105,11 @@ export default function ReportsPage() {
           text={String(row.severity)}
         />
       ),
+    },
+    {
+      key: "urgencyScore",
+      label: "Urgency",
+      render: (row) => row.urgencyScore ?? 0,
     },
     {
       key: "status",

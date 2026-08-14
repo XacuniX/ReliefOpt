@@ -4,14 +4,7 @@ import { Button, Badge, Textarea, Toast } from "../ui";
 import Sheet from "../ui/Sheet";
 import UrgencyGauge from "./UrgencyGauge";
 import { cityCoords, teams } from "../../mockData";
-
-const urgencyFactors = [
-  { label: "Days Without Food", value: "28/30" },
-  { label: "Water Level", value: "15/20" },
-  { label: "People Count", value: "10/20" },
-  { label: "Vulnerable Persons", value: "15/15" },
-  { label: "Distance from Aid", value: "8/15" },
-];
+import { calculateUrgency } from "../../lib/urgency";
 
 export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }) {
   const [showAssign, setShowAssign] = useState(false);
@@ -22,6 +15,17 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
   if (!report) return null;
 
   const coords = cityCoords[report.location] || [23.8103, 90.4125];
+  const calculatedUrgency = calculateUrgency({
+    daysWithoutFood: report.daysWithoutFood,
+    waterLevelFt: report.waterLevelFt,
+    peopleCount: report.peopleCount ?? report.affectedCount,
+    childrenPresent: report.childrenPresent,
+    elderlyPresent: report.elderlyPresent,
+    distanceFromAidKm: report.distanceFromAidKm,
+  });
+  const urgency = report.urgencyFactors
+    ? { score: report.urgencyScore, factors: report.urgencyFactors }
+    : calculatedUrgency;
 
   function handleAction(action) {
     if (action === "Acknowledge") {
@@ -106,7 +110,7 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
           </MapContainer>
         </div>
 
-        <UrgencyGauge score={report.urgencyScore} factors={urgencyFactors} />
+        <UrgencyGauge score={urgency.score} factors={urgency.factors} />
 
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">

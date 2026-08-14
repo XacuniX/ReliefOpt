@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Select, Textarea, Progress, Toast, Badge } from "../ui";
+import { calculateUrgency } from "../../lib/urgency";
 
 const districts = [
   "Dhaka", "Chattogram", "Khulna", "Rajshahi", "Sylhet", "Barishal",
@@ -8,6 +9,10 @@ const districts = [
 ];
 
 const incidentTypes = ["Flood", "Cyclone", "Earthquake", "Fire", "Other"];
+
+function toNullableNumber(value) {
+  return value === "" ? null : Number(value);
+}
 
 export default function ReportForm({ onSubmit }) {
   const [step, setStep] = useState(1);
@@ -21,6 +26,9 @@ export default function ReportForm({ onSubmit }) {
     severity: 3,
     description: "",
     affectedCount: "",
+    daysWithoutFood: "",
+    waterLevelFt: "",
+    distanceFromAidKm: "",
     childrenPresent: false,
     elderlyPresent: false,
   });
@@ -30,6 +38,19 @@ export default function ReportForm({ onSubmit }) {
   }
 
   function handleSubmit() {
+    const peopleCount = toNullableNumber(form.affectedCount);
+    const daysWithoutFood = toNullableNumber(form.daysWithoutFood);
+    const waterLevelFt = toNullableNumber(form.waterLevelFt);
+    const distanceFromAidKm = toNullableNumber(form.distanceFromAidKm);
+    const urgency = calculateUrgency({
+      daysWithoutFood,
+      waterLevelFt,
+      peopleCount,
+      childrenPresent: form.childrenPresent,
+      elderlyPresent: form.elderlyPresent,
+      distanceFromAidKm,
+    });
+
     const report = {
       id: `voice-${Date.now()}`,
       type: form.type,
@@ -39,8 +60,14 @@ export default function ReportForm({ onSubmit }) {
       submittedBy: "Voice Report",
       time: new Date().toISOString(),
       description: form.description,
-      affectedCount: Number(form.affectedCount) || 0,
-      urgencyScore: Math.min(100, form.severity * 20 + (form.childrenPresent ? 10 : 0) + (form.elderlyPresent ? 10 : 0)),
+      affectedCount: peopleCount ?? 0,
+      peopleCount,
+      daysWithoutFood,
+      waterLevelFt,
+      distanceFromAidKm,
+      urgencyScore: urgency.score,
+      urgencyZone: urgency.zone,
+      urgencyFactors: urgency.factors,
       childrenPresent: form.childrenPresent,
       elderlyPresent: form.elderlyPresent,
     };
@@ -54,6 +81,9 @@ export default function ReportForm({ onSubmit }) {
       severity: 3,
       description: "",
       affectedCount: "",
+      daysWithoutFood: "",
+      waterLevelFt: "",
+      distanceFromAidKm: "",
       childrenPresent: false,
       elderlyPresent: false,
     });
@@ -157,9 +187,36 @@ export default function ReportForm({ onSubmit }) {
           <Input
             label="Affected People Count"
             type="number"
+            min="0"
             value={form.affectedCount}
             onChange={(e) => updateField("affectedCount", e.target.value)}
             placeholder="0"
+          />
+          <Input
+            label="Days without food"
+            type="number"
+            min="0"
+            value={form.daysWithoutFood}
+            onChange={(e) => updateField("daysWithoutFood", e.target.value)}
+            placeholder="Unknown"
+          />
+          <Input
+            label="Water level (ft)"
+            type="number"
+            min="0"
+            step="any"
+            value={form.waterLevelFt}
+            onChange={(e) => updateField("waterLevelFt", e.target.value)}
+            placeholder="Unknown"
+          />
+          <Input
+            label="Distance from aid (km)"
+            type="number"
+            min="0"
+            step="any"
+            value={form.distanceFromAidKm}
+            onChange={(e) => updateField("distanceFromAidKm", e.target.value)}
+            placeholder="Unknown"
           />
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
