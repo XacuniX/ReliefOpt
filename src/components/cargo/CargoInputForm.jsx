@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button, Card, Input, Select } from "../ui";
 import { cargoVehicles } from "../../mockData";
+import { optimize as optimizePacking } from "../../lib/packing";
 
 const emptyItem = () => ({ id: crypto.randomUUID(), name: "", length: "", width: "", height: "", weight: "", quantity: "", category: "Food" });
-const fields = [["length", "L"], ["width", "W"], ["height", "H"], ["weight", "Weight (kg)"], ["quantity", "Qty"]];
+const fields = [["length", "L (cm)"], ["width", "W (cm)"], ["height", "H (cm)"], ["weight", "Weight (kg)"], ["quantity", "Qty"]];
 
 export default function CargoInputForm({ onOptimized }) {
   const [vehicle, setVehicle] = useState({ length: "", width: "", height: "", name: "" });
@@ -18,21 +19,21 @@ export default function CargoInputForm({ onOptimized }) {
     setSelectedVehicleId(vehicleId);
     const v = cargoVehicles.find((cv) => cv.id === vehicleId);
     if (v) {
-      setVehicle({ length: String(v.length), width: String(v.width), height: String(v.height), name: v.name });
+      setVehicle({ length: String(v.length), width: String(v.width), height: String(v.height), name: v.name, maxWeight: v.maxWeight });
     }
   }
 
-  function optimize(event) {
+  function handleOptimize(event) {
     event.preventDefault();
     setOptimizing(true);
-    setTimeout(() => {
-      setOptimizing(false);
+    requestAnimationFrame(() => {
       const validItems = items.filter((i) => i.name && Number(i.length) > 0);
       const vehicleData = {
         length: Number(vehicle.length) || 6,
         width: Number(vehicle.width) || 2.4,
         height: Number(vehicle.height) || 2.5,
         name: vehicle.name || "Custom Vehicle",
+        ...(vehicle.maxWeight ? { maxWeight: Number(vehicle.maxWeight) } : {}),
       };
       const itemsData = validItems.map((i) => ({
         id: i.id,
@@ -44,12 +45,13 @@ export default function CargoInputForm({ onOptimized }) {
         weight: Number(i.weight) || 10,
         quantity: Number(i.quantity) || 1,
       }));
-      onOptimized?.({ vehicle: vehicleData, items: itemsData });
-    }, 1500);
+      onOptimized?.({ vehicle: vehicleData, items: itemsData, ...optimizePacking(vehicleData, itemsData) });
+      setOptimizing(false);
+    });
   }
 
   return (
-    <form onSubmit={optimize}>
+    <form onSubmit={handleOptimize}>
       <Card>
         <h2 className="text-lg font-bold mb-4">Vehicle Selection</h2>
         <Select
