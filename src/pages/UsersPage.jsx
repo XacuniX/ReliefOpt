@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import RoleGate from "../components/RoleGate";
-import { Button, Input, Select, Toast } from "../components/ui";
-import { users as mockUsers } from "../mockData";
+import { Button, Input, Select, Toast, Loader } from "../components/ui";
+import { useData } from "../context/DataContext";
 import UserFormModal from "../components/users/UserFormModal";
 import UserTable from "../components/users/UserTable";
 import TeamPanel from "../components/users/TeamPanel";
 
 function UsersContent() {
-  const [users, setUsers] = useState(mockUsers);
+  const { ready, users, addUser, updateUser, deactivateUser } = useData();
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [editingUser, setEditingUser] = useState(null);
@@ -25,21 +25,25 @@ function UsersContent() {
   );
 
   function saveUser(user) {
-    setUsers((current) =>
-      user.id
-        ? current.map((entry) => (entry.id === user.id ? { ...entry, ...user } : entry))
-        : [...current, { ...user, id: `u${Date.now()}`, lastLogin: new Date().toISOString() }]
-    );
+    if (user.id) {
+      updateUser(user.id, user);
+    } else {
+      addUser({ ...user, id: `u${Date.now()}`, lastLogin: new Date().toISOString() });
+    }
     setToast("User saved successfully.");
   }
 
   function deactivate(user) {
-    setUsers((current) =>
-      current.map((entry) =>
-        entry.id === user.id ? { ...entry, status: "Inactive" } : entry
-      )
-    );
+    deactivateUser(user.id);
     setToast(`${user.name} has been deactivated.`);
+  }
+
+  if (!ready) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <Loader />
+      </div>
+    );
   }
 
   return (

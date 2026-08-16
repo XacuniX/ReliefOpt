@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Button, Card, Toast } from "../components/ui";
-import { inventory } from "../mockData";
+import { Button, Card, Toast, Loader } from "../components/ui";
+import { useData } from "../context/DataContext";
+import { useAuth } from "../context/AuthContext";
 import InventoryTable from "../components/inventory/InventoryTable";
 import ItemFormModal from "../components/inventory/ItemFormModal";
 import StockLog from "../components/inventory/StockLog";
@@ -10,8 +11,9 @@ import { Tabs, TabsContent } from "../components/ui/Tabs";
 const warehouses = ["Warehouse A", "Warehouse B", "Warehouse C", "Warehouse D", "Warehouse E"];
 
 export default function InventoryPage() {
+  const { ready, inventory, addItem, updateItem, addStockLog } = useData();
+  const { currentUser } = useAuth();
   const [activeWarehouse, setActiveWarehouse] = useState(warehouses[0]);
-  const [items, setItems] = useState(inventory);
   const [editingItem, setEditingItem] = useState(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -19,12 +21,12 @@ export default function InventoryPage() {
 
   const summary = useMemo(
     () => ({
-      totalSkus: items.length,
-      lowStock: items.filter((item) => item.qty < 20).length,
-      outOfStock: items.filter((item) => item.qty === 0).length,
-      pendingShipments: items.filter((item) => item.qty <= 5 && item.qty > 0).length,
+      totalSkus: inventory.length,
+      lowStock: inventory.filter((item) => item.qty < 20).length,
+      outOfStock: inventory.filter((item) => item.qty === 0).length,
+      pendingShipments: inventory.filter((item) => item.qty <= 5 && item.qty > 0).length,
     }),
-    [items]
+    [inventory]
   );
 
   function openAddModal() {
@@ -44,14 +46,45 @@ export default function InventoryPage() {
 
   function saveItem(form) {
     const status = form.qty <= 5 ? "Critical" : form.qty < 20 ? "Low" : "OK";
+    const userName = currentUser?.name || "Unknown";
     if (editingItem) {
-      setItems((current) => current.map((item) => (item.id === editingItem.id ? { ...item, ...form, status, lastUpdated: new Date().toISOString() } : item)));
+      updateItem(editingItem.id, { ...form, status, lastUpdated: new Date().toISOString() });
+      const delta = Number(form.qty) - Number(editingItem.qty);
+      if (delta !== 0) {
+        addStockLog({
+          id: crypto.randomUUID(),
+          itemId: editingItem.id,
+          itemName: form.name,
+          change: delta,
+          reason: "Adjustment",
+          user: userName,
+          timestamp: new Date().toISOString(),
+        });
+      }
       setToastMessage("Inventory item updated successfully.");
     } else {
-      setItems((current) => [...current, { ...form, id: `inv${Date.now()}`, status, lastUpdated: new Date().toISOString() }]);
+      const id = `inv${Date.now()}`;
+      addItem({ ...form, id, status, lastUpdated: new Date().toISOString() });
+      addStockLog({
+        id: crypto.randomUUID(),
+        itemId: id,
+        itemName: form.name,
+        change: form.qty,
+        reason: "Restocking",
+        user: userName,
+        timestamp: new Date().toISOString(),
+      });
       setToastMessage("Inventory item added successfully.");
     }
     setModalOpen(false);
+  }
+
+  if (!ready) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <Loader />
+      </div>
+    );
   }
 
   const cards = [
@@ -66,7 +99,7 @@ export default function InventoryPage() {
       <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
       <p className="text-sm text-muted-foreground mt-1 mb-6">Monitor relief supplies across all warehouses.</p>
 
-      <LowStockAlert items={items} onItemSelect={focusInventoryItem} />
+      <LowStockAlert items={inventory} onItemSelect={focusInventoryItem} />
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         {cards.map(([label, value]) => (
@@ -91,7 +124,7 @@ export default function InventoryPage() {
           ))}
         </Tabs>
 
-        <InventoryTable activeWarehouse={activeWarehouse} items={items} onEdit={openEditModal} highlightItemId={highlightItemId} />
+        <InventoryTable activeWarehouse={activeWarehouse} items={inventory} onEdit={openEditModal} highlightItemId={highlightItemId} />
         <StockLog />
       </section>
 
