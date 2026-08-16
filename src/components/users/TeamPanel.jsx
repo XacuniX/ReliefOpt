@@ -1,21 +1,24 @@
 import { useState } from "react";
 import { Badge, Card } from "../ui";
-import { teams, users } from "../../mockData";
+import { useData } from "../../context/DataContext";
 
 const teamColors = { Deployed: "green", Standby: "amber", Offline: "grey" };
 const roleColors = { central_admin: "navy", warehouse_manager: "orange", field_worker: "teal" };
 const dotColors = { Active: "bg-emerald-600", Inactive: "bg-red-600", Offline: "bg-amber-500" };
 
-export default function TeamPanel({ teamList = teams, userList = users }) {
+export default function TeamPanel({ teamList, userList }) {
+  const data = useData();
+  const teams = teamList || data.teams;
+  const users = userList || data.users;
   const [expandedId, setExpandedId] = useState("");
 
   return (
     <section className="mt-8">
       <h2 className="text-xl font-bold mb-4">Teams</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {teamList.map((team) => {
+        {teams.map((team) => {
           const expanded = expandedId === team.id;
-          const members = userList.filter((user) => user.team === team.name);
+          const members = users.filter((user) => user.team === team.name);
           return (
             <Card
               key={team.id}
