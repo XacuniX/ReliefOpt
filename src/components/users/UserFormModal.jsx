@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Modal, Select } from "../ui";
-import { teams } from "../../mockData";
+import { useData } from "../../context/DataContext";
 
 const emptyUser = { name: "", username: "", role: "field_worker", team: "", phone: "", status: "Active" };
 const roles = ["central_admin", "warehouse_manager", "field_worker"];
-const assignmentOptions = ["", ...teams.map((team) => team.name), "Warehouse A", "Warehouse B", "Warehouse C", "Warehouse D", "Warehouse E"];
 
 export default function UserFormModal({ isOpen, user, onClose, onSave }) {
+  const { teams } = useData();
+  const assignmentOptions = ["", ...teams.map((team) => team.name), "Warehouse A", "Warehouse B", "Warehouse C", "Warehouse D", "Warehouse E"];
   const [form, setForm] = useState(emptyUser);
   const [initialRole, setInitialRole] = useState(emptyUser.role);
 

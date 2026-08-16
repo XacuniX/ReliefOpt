@@ -6,8 +6,10 @@ import AlertFeed from "../components/dashboard/AlertFeed";
 import ChartPanel from "../components/dashboard/ChartPanel";
 import { Button } from "../components/ui";
 import { RefreshCw } from "lucide-react";
+import { useData } from "../context/DataContext";
 
 function DashboardContent() {
+  const { ready } = useData();
   const [lastUpdated, setLastUpdated] = useState(Date.now());
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -23,6 +25,8 @@ function DashboardContent() {
     const min = Math.floor(sec / 60);
     return `${min} min ago`;
   }
+
+  if (!ready) return <p className="text-muted-foreground">Loading dashboard…</p>;
 
   return (
     <div className="max-w-7xl mx-auto" key={refreshKey}>

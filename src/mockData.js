@@ -815,3 +815,30 @@ export const cargoVehicles = [
     height: 2.8,
   },
 ];
+
+// ─── Seed Data ────────────────────────────────────────────────────────────────
+// Used by src/lib/db.js to seed IndexedDB on first launch.
+export const seedData = {
+  reports,
+  tasks,
+  inventory,
+  users,
+  teams,
+  warehouses: [
+    { id: "wa", name: "Warehouse A" },
+    { id: "wb", name: "Warehouse B" },
+    { id: "wc", name: "Warehouse C" },
+    { id: "wd", name: "Warehouse D" },
+    { id: "we", name: "Warehouse E" },
+  ],
+  notifications,
+  stockLog: [
+    { id: "log1", itemId: "inv20", itemName: "Drinking Water (Bottled)", change: 500, reason: "Restocking", user: "Fatima Begum", timestamp: "2026-07-26T11:10:00Z" },
+    { id: "log2", itemId: "inv17", itemName: "Plastic Sheeting Rolls", change: -3, reason: "Distribution", user: "Kamal Hossain", timestamp: "2026-07-26T10:35:00Z" },
+    { id: "log3", itemId: "inv9", itemName: "Flashlights & Batteries", change: -2, reason: "Damage", user: "Mizanur Rahman", timestamp: "2026-07-26T10:05:00Z" },
+    { id: "log4", itemId: "inv19", itemName: "Paracetamol Tablets", change: 20, reason: "Restocking", user: "Fatima Begum", timestamp: "2026-07-26T09:45:00Z" },
+    { id: "log5", itemId: "inv12", itemName: "Cooking Oil", change: -4, reason: "Distribution", user: "Nasrin Akter", timestamp: "2026-07-26T08:50:00Z" },
+  ],
+  mapPins: [],
+  syncQueue: [],
+};

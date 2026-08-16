@@ -1,32 +1,21 @@
 import { useMemo, useState } from "react";
 import { Badge, Card, Input } from "../ui";
-
-const stockLogs = [
-  { id: "log1", timestamp: "2026-07-26T11:10:00Z", itemName: "Drinking Water (Bottled)", change: 500, reason: "Restocking", user: "Fatima Begum" },
-  { id: "log2", timestamp: "2026-07-26T10:35:00Z", itemName: "Plastic Sheeting Rolls", change: -3, reason: "Distribution", user: "Kamal Hossain" },
-  { id: "log3", timestamp: "2026-07-26T10:05:00Z", itemName: "Flashlights & Batteries", change: -2, reason: "Damage", user: "Mizanur Rahman" },
-  { id: "log4", timestamp: "2026-07-26T09:45:00Z", itemName: "Paracetamol Tablets", change: 20, reason: "Restocking", user: "Fatima Begum" },
-  { id: "log5", timestamp: "2026-07-26T08:50:00Z", itemName: "Cooking Oil", change: -4, reason: "Distribution", user: "Nasrin Akter" },
-  { id: "log6", timestamp: "2026-07-26T08:05:00Z", itemName: "Rice (Fortified)", change: -120, reason: "Distribution", user: "Kamal Hossain" },
-  { id: "log7", timestamp: "2026-07-25T16:20:00Z", itemName: "Emergency Tarpaulins", change: 8, reason: "Adjustment", user: "Fatima Begum" },
-  { id: "log8", timestamp: "2026-07-25T14:35:00Z", itemName: "Oral Rehydration Salts", change: 100, reason: "Restocking", user: "Mizanur Rahman" },
-  { id: "log9", timestamp: "2026-07-25T11:15:00Z", itemName: "First Aid Kits", change: -6, reason: "Distribution", user: "Taslima Khatun" },
-  { id: "log10", timestamp: "2026-07-24T17:05:00Z", itemName: "Portable Water Pumps", change: -1, reason: "Damage", user: "Mizanur Rahman" },
-];
+import { useData } from "../../context/DataContext";
 
 const reasonColors = { Distribution: "teal", Restocking: "green", Damage: "red", Adjustment: "amber" };
 
 export default function StockLog() {
+  const { stockLog } = useData();
   const [date, setDate] = useState("");
   const [search, setSearch] = useState("");
 
   const filteredLogs = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return stockLogs.filter((log) => {
+    return stockLog.filter((log) => {
       const matchesDate = !date || log.timestamp.slice(0, 10) === date;
       return matchesDate && (!query || log.itemName.toLowerCase().includes(query));
     });
-  }, [date, search]);
+  }, [date, search, stockLog]);
 
   return (
     <section className="mt-8">

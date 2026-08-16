@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, Button, Card, Toast } from "../components/ui";
-import { tasks as mockTasks, users } from "../mockData";
+import { useData } from "../context/DataContext";
 import RoleGate from "../components/RoleGate";
 import CreateTaskModal from "../components/tasks/CreateTaskModal";
 import MyTasksList from "../components/tasks/MyTasksList";
@@ -9,7 +9,7 @@ const statuses = ["To Do", "In Progress", "En Route", "Completed"];
 const priorityColors = { Critical: "red", High: "orange", Medium: "teal", Low: "grey" };
 const columnBg = { "To Do": "bg-blue-50/50 dark:bg-blue-950/20", "In Progress": "bg-amber-50/50 dark:bg-amber-950/20", "En Route": "bg-purple-50/50 dark:bg-purple-950/20", Completed: "bg-emerald-50/50 dark:bg-emerald-950/20" };
 
-function teamFor(assignee) {
+function teamFor(users, assignee) {
   return users.find((user) => user.name === assignee)?.team || assignee || "Unassigned team";
 }
 
@@ -17,7 +17,7 @@ function dueLabel(time) {
   return `Due ${new Date(time).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`;
 }
 
-function KanbanBoard({ taskList, onMoveTask }) {
+function KanbanBoard({ taskList, users, onMoveTask }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-2">
       {statuses.map((status) => {
@@ -35,7 +35,7 @@ function KanbanBoard({ taskList, onMoveTask }) {
                   <Card key={task.id} className="p-4">
                     <p className="text-xs text-muted-foreground m-0">{task.id}</p>
                     <h3 className="text-base font-semibold leading-tight my-1.5">{task.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{teamFor(task.assignedTo)}</p>
+                    <p className="text-sm text-muted-foreground mb-3">{teamFor(users, task.assignedTo)}</p>
                     <div className="flex items-center gap-2 justify-between">
                       <Badge color={priorityColors[task.priority]} text={task.priority} />
                       {nextStatus && (
@@ -66,15 +66,12 @@ function KanbanBoard({ taskList, onMoveTask }) {
 }
 
 export default function TasksPage() {
-  const [taskList, setTaskList] = useState(mockTasks);
+  const { tasks, users, addTask, updateTask } = useData();
   const [toastMessage, setToastMessage] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  const updateTask = (id, changes) =>
-    setTaskList((current) => current.map((task) => (task.id === id ? { ...task, ...changes } : task)));
-
   function createTask(task) {
-    setTaskList((current) => [...current, task]);
+    addTask(task);
     setToastMessage("Task created and added to To Do.");
   }
 
@@ -88,10 +85,10 @@ export default function TasksPage() {
         <Button onClick={() => setCreateModalOpen(true)}>+ New Task</Button>
       </div>
       <RoleGate allowed={["central_admin", "warehouse_manager"]}>
-        <KanbanBoard taskList={taskList} onMoveTask={(id, status) => updateTask(id, { status })} />
+        <KanbanBoard taskList={tasks} users={users} onMoveTask={(id, status) => updateTask(id, { status })} />
       </RoleGate>
       <RoleGate allowed={["field_worker"]}>
-        <MyTasksList tasks={taskList} onUpdateTask={updateTask} />
+        <MyTasksList tasks={tasks} onUpdateTask={updateTask} />
       </RoleGate>
       <CreateTaskModal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={createTask} />
       {toastMessage && <Toast type="success" message={toastMessage} onDismiss={() => setToastMessage("")} />}
