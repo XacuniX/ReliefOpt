@@ -37,7 +37,7 @@ export default function ReportsPage() {
       result = result.filter(
         (r) =>
           r.id.toLowerCase().includes(q) ||
-          r.location.toLowerCase().includes(q) ||
+          (r.district || "").toLowerCase().includes(q) ||
           r.submittedBy.toLowerCase().includes(q)
       );
     }
@@ -93,7 +93,7 @@ export default function ReportsPage() {
       label: "Type",
       render: (row) => <Badge color={typeColors[row.type] || "grey"} text={row.type} />,
     },
-    { key: "location", label: "Location" },
+    { key: "district", label: "Location" },
     {
       key: "severity",
       label: "Severity",

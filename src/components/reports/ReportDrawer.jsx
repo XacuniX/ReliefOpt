@@ -14,7 +14,9 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
 
   if (!report) return null;
 
-  const coords = cityCoords[report.location] || [23.8103, 90.4125];
+  const coords = report.location
+    ? [report.location.lat, report.location.lng]
+    : cityCoords[report.district] || [23.8103, 90.4125];
   const calculatedUrgency = calculateUrgency({
     daysWithoutFood: report.daysWithoutFood,
     waterLevelFt: report.waterLevelFt,
@@ -73,7 +75,7 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
 
         <div className="grid grid-cols-2 gap-3 text-sm">
           {[
-            ["Location", report.location],
+            ["Location", report.district || "Unknown"],
             ["Severity", `${report.severity}/5`],
             ["Submitted By", report.submittedBy],
             ["Time", new Date(report.time).toLocaleString([], { dateStyle: "short", timeStyle: "short" })],
@@ -105,7 +107,7 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <Marker position={coords}>
-              <Popup>{report.location}</Popup>
+              <Popup>{report.district || "Unknown"}</Popup>
             </Marker>
           </MapContainer>
         </div>

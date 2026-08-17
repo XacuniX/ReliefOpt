@@ -18,7 +18,9 @@ export default function TeamPanel({ teamList, userList }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {teams.map((team) => {
           const expanded = expandedId === team.id;
-          const members = users.filter((user) => user.team === team.name);
+          const members = users.filter(
+            (user) => user.teamId === team.id || user.team === team.name
+          );
           return (
             <Card
               key={team.id}

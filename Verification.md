@@ -8,15 +8,15 @@
 > 1. ~~**Fix the critical blocker first** — wire `/submit-report` and `/reports` through
 >    `DataContext` (see *Failed and partial tasks*). This unblocks Y1.3, Y1.4, Y1.7, and
 >    N1.8. Nothing else is worth verifying until this is done.~~
-> 2. **Fix the remaining code failures** — Y2.6 (enriched records), Y2.8 (warehouse
->    helpers), and the Y2.5 / Y2.9 / Y1.8 partials.
+> 2. ~~**Fix the remaining code failures** — Y2.6 (enriched records), Y2.8 (warehouse
+>    helpers), and the Y2.5 / Y2.9 / Y1.8 partials.~~
 > 3. **Run the build** — `npm run build && npm run preview`. A passing build is a gate for
 >    every N3 offline/PWA check.
 > 4. **Re-verify the checklist automatically** — after the fixes and build pass, run this
 >    prompt in the AI assistant to refresh this report:
 >
 >    ```text
->    update verification.md after line 40 where you verify if tasks in day0, y1,y2,y3,n1,n2,n3 checklists are completed from tasks.md and according to ur verification update accordingly.
+>    Verify if tasks in day-0,y1,y2,y3,n1,n2,n3 checklists are completed from tasks.md to the best of ur abilities and based on ur verification,  update verifcation.md file accordingly. Ensure that manual checklist is also updated after based on the tasks you couldn't verify yourself.
 >    ```
 >
 > 5. **Do the manual browser checks** — start at Day 0, then Y1 → Y2 → Y3 → N1 → N2 → N3,

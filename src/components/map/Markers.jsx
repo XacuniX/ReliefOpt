@@ -103,7 +103,9 @@ export default function Markers({ filters, voicePins }) {
         reports
           .filter((r) => r.severity >= filters.minSeverity)
           .map((report) => {
-            const coords = cityCoords[report.location];
+            const coords = report.location
+              ? [report.location.lat, report.location.lng]
+              : cityCoords[report.district];
             if (!coords) return null;
             const colors = severityColors[report.severity] || severityColors[1];
             return (
@@ -115,7 +117,7 @@ export default function Markers({ filters, voicePins }) {
               >
                 <Popup>
                   <div className="text-sm">
-                    <strong>{report.type} — {report.location}</strong>
+                    <strong>{report.type} — {report.district || "Unknown"}</strong>
                     <br />
                     Severity: {report.severity}/5
                     <br />

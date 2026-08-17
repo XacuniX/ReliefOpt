@@ -134,11 +134,35 @@ export function DataProvider({ children }) {
     });
   }
 
+  const enrichedReports = state.reports.map((r) => ({
+    ...r,
+    submittedBy:
+      state.users.find((u) => u.id === r.submittedById)?.name ??
+      r.submittedBy ??
+      "Unknown",
+  }));
+
+  const enrichedInventory = state.inventory.map((i) => ({
+    ...i,
+    warehouse:
+      state.warehouses.find((w) => w.id === i.warehouseId)?.name ??
+      i.warehouse ??
+      "Unknown",
+  }));
+
+  function getWarehouseInventory(id) {
+    return state.inventory.filter((i) => i.warehouseId === id);
+  }
+
+  function getLowStockItems(id) {
+    return getWarehouseInventory(id).filter((i) => i.qty < 20);
+  }
+
   const value = {
     ready,
-    reports: state.reports,
+    reports: enrichedReports,
     tasks: state.tasks,
-    inventory: state.inventory,
+    inventory: enrichedInventory,
     users: state.users,
     teams: state.teams,
     warehouses: state.warehouses,
@@ -164,6 +188,8 @@ export function DataProvider({ children }) {
         p.map((u) => (u.id === id ? { ...u, status: "Inactive" } : u))
       ),
     addStockLog: (entry) => updateStore("stockLog", (p) => [entry, ...p]),
+    getWarehouseInventory,
+    getLowStockItems,
     updateItemQty: (id, delta, reason, userName) => {
       const entry = {
         id: crypto.randomUUID(),

@@ -11,7 +11,7 @@ import { Tabs, TabsContent } from "../components/ui/Tabs";
 const warehouses = ["Warehouse A", "Warehouse B", "Warehouse C", "Warehouse D", "Warehouse E"];
 
 export default function InventoryPage() {
-  const { ready, inventory, addItem, updateItem, addStockLog } = useData();
+  const { ready, inventory, warehouses: warehouseRecords, addItem, updateItem, addStockLog } = useData();
   const { currentUser } = useAuth();
   const [activeWarehouse, setActiveWarehouse] = useState(warehouses[0]);
   const [editingItem, setEditingItem] = useState(undefined);
@@ -47,8 +47,10 @@ export default function InventoryPage() {
   function saveItem(form) {
     const status = form.qty <= 5 ? "Critical" : form.qty < 20 ? "Low" : "OK";
     const userName = currentUser?.name || "Unknown";
+    const warehouseId =
+      warehouseRecords.find((w) => w.name === form.warehouse)?.id ?? null;
     if (editingItem) {
-      updateItem(editingItem.id, { ...form, status, lastUpdated: new Date().toISOString() });
+      updateItem(editingItem.id, { ...form, warehouseId, status, lastUpdated: new Date().toISOString() });
       const delta = Number(form.qty) - Number(editingItem.qty);
       if (delta !== 0) {
         addStockLog({
@@ -64,7 +66,7 @@ export default function InventoryPage() {
       setToastMessage("Inventory item updated successfully.");
     } else {
       const id = `inv${Date.now()}`;
-      addItem({ ...form, id, status, lastUpdated: new Date().toISOString() });
+      addItem({ ...form, id, warehouseId, status, lastUpdated: new Date().toISOString() });
       addStockLog({
         id: crypto.randomUUID(),
         itemId: id,

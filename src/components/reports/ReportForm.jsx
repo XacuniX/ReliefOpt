@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Input, Select, Textarea, Progress, Toast, Badge } from "../ui";
 import { calculateUrgency } from "../../lib/urgency";
+import { useAuth } from "../../context/AuthContext";
 
 const districts = [
   "Dhaka", "Chattogram", "Khulna", "Rajshahi", "Sylhet", "Barishal",
@@ -14,7 +15,16 @@ function toNullableNumber(value) {
   return value === "" ? null : Number(value);
 }
 
+function parseCoordinates(value) {
+  const [lat, lng] = String(value || "")
+    .split(",")
+    .map((part) => Number(part.trim()));
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  return { lat: 23.8103, lng: 90.4125 };
+}
+
 export default function ReportForm({ onSubmit }) {
+  const { currentUser } = useAuth();
   const [step, setStep] = useState(1);
   const [toast, setToast] = useState(null);
 
@@ -54,10 +64,12 @@ export default function ReportForm({ onSubmit }) {
     const report = {
       id: `voice-${Date.now()}`,
       type: form.type,
-      location: form.district,
+      district: form.district,
+      location: parseCoordinates(form.coordinates),
       severity: form.severity,
       status: "Pending",
-      submittedBy: "Voice Report",
+      submittedById: currentUser?.id,
+      submittedBy: currentUser?.name || "Unknown",
       time: new Date().toISOString(),
       description: form.description,
       affectedCount: peopleCount ?? 0,

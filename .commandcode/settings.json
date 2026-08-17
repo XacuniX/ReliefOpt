@@ -5,7 +5,10 @@
       "Shell(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
       "Shell(npx vite build)",
       "Shell(node --version)",
-      "Shell(node node_modules/vite/bin/vite.js build)"
+      "Shell(node node_modules/vite/bin/vite.js build)",
+      "Shell(node --check src/mockData.js)",
+      "Shell(ls:*)",
+      "Shell(find:*)"
     ],
     "deny": [],
     "defaultMode": "default"
