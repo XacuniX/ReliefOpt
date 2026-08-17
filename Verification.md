@@ -5,9 +5,9 @@
 > Work through the checklist in this order, and do not mark an item resolved until its
 > code fix **and** its browser check both pass.
 >
-> 1. **Fix the critical blocker first** — wire `/submit-report` and `/reports` through
+> 1. ~~**Fix the critical blocker first** — wire `/submit-report` and `/reports` through
 >    `DataContext` (see *Failed and partial tasks*). This unblocks Y1.3, Y1.4, Y1.7, and
->    N1.8. Nothing else is worth verifying until this is done.
+>    N1.8. Nothing else is worth verifying until this is done.~~
 > 2. **Fix the remaining code failures** — Y2.6 (enriched records), Y2.8 (warehouse
 >    helpers), and the Y2.5 / Y2.9 / Y1.8 partials.
 > 3. **Run the build** — `npm run build && npm run preview`. A passing build is a gate for

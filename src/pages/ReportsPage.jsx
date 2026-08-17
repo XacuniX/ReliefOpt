@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Input, Select, Table, Badge } from "../components/ui";
 import ReportDrawer from "../components/reports/ReportDrawer";
-import { reports as mockReports } from "../mockData";
+import { useData } from "../context/DataContext";
 
 const typeColors = {
   Flood: "blue",
@@ -18,7 +18,7 @@ const statusColors = {
 };
 
 export default function ReportsPage() {
-  const [reports, setReports] = useState(mockReports);
+  const { reports, updateReport } = useData();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
@@ -77,9 +77,7 @@ export default function ReportsPage() {
   }
 
   function handleStatusChange(reportId, newStatus) {
-    setReports((prev) =>
-      prev.map((r) => (r.id === reportId ? { ...r, status: newStatus } : r))
-    );
+    updateReport(reportId, { status: newStatus });
   }
 
   const columns = [

@@ -1,8 +1,8 @@
-import { useState } from "react";
 import ReportForm from "../components/reports/ReportForm";
+import { useData } from "../context/DataContext";
 
 export default function SubmitReportPage() {
-  const [, setSubmitted] = useState(null);
+  const { addReport } = useData();
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -12,7 +12,7 @@ export default function SubmitReportPage() {
           File a new emergency report for response coordination.
         </p>
       </div>
-      <ReportForm onSubmit={setSubmitted} />
+      <ReportForm onSubmit={addReport} />
     </div>
   );
 }
