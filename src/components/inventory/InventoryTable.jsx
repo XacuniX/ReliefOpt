@@ -83,13 +83,13 @@ export default function InventoryTable({ activeWarehouse, items, onEdit, highlig
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1050px] text-sm">
             <thead>
-              <tr className="bg-muted/50">
+              <tr className="bg-slate-100 dark:bg-slate-800/60">
                 {headers.map(([key, label]) => (
                   <th key={key} scope="col" className="px-4 py-3 text-left">
                     <button
                       type="button"
                       onClick={() => toggleSort(key)}
-                      className="text-xs font-bold text-muted-foreground uppercase tracking-wider w-full text-left hover:text-foreground transition-colors"
+                      className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-full text-left hover:text-slate-900 dark:hover:text-white transition-colors"
                     >
                       {label}
                       {sort.key === key && (
@@ -98,7 +98,7 @@ export default function InventoryTable({ activeWarehouse, items, onEdit, highlig
                     </button>
                   </th>
                 ))}
-                <th scope="col" className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider text-left">Actions</th>
+                <th scope="col" className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -106,15 +106,15 @@ export default function InventoryTable({ activeWarehouse, items, onEdit, highlig
                 <tr
                   key={item.id}
                   id={`inv-row-${item.id}`}
-                  className={`border-t border-border hover:bg-muted/30 transition-colors ${item.id === highlightItemId ? "bg-amber-500/20 outline-2 outline-amber-500 outline" : ""}`}
+                  className={`border-t border-slate-200 dark:border-border hover:bg-slate-100/70 dark:hover:bg-muted/30 transition-colors ${item.id === highlightItemId ? "bg-amber-500/20 outline-2 outline-amber-500 outline" : ""}`}
                 >
-                  <td className="px-4 py-3 whitespace-nowrap">{item.id}</td>
-                  <td className="px-4 py-3 font-semibold">{item.name}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{item.id}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-300">{item.name}</td>
                   <td className="px-4 py-3"><Badge color={categoryColors[item.category]} text={item.category} /></td>
-                  <td className="px-4 py-3">{item.qty.toLocaleString()}</td>
-                  <td className="px-4 py-3">{item.unit}</td>
-                  <td className="px-4 py-3">{item.warehouse}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{new Date(item.lastUpdated).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.qty.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.unit}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.warehouse}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{new Date(item.lastUpdated).toLocaleDateString()}</td>
                   <td className="px-4 py-3"><Badge color={statusColors[item.status]} text={item.status} /></td>
                   <td className="px-4 py-3"><Button size="sm" variant="ghost" onClick={() => onEdit(item)}>Edit</Button></td>
                 </tr>

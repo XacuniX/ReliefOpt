@@ -43,7 +43,7 @@ export default function SyncIndicator() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="glass-card flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all hover:border-teal-500/40 cursor-pointer"
+        className="bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30 flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all hover:border-teal-500/40 cursor-pointer"
         aria-label="Sync status"
       >
         <span className={`h-2 w-2 rounded-full ${s.dot}`} />

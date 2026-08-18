@@ -19,7 +19,7 @@ export default function BottomNav() {
   const isActive = (route) => location.pathname.startsWith(route);
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-14 glass-card rounded-none border-t border-teal-500/15 flex justify-around items-center z-20 pb-[env(safe-area-inset-bottom,0)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-14 rounded-none border-t border-teal-500/20 dark:border-white/20 bg-white/85 dark:bg-white/10 backdrop-blur-lg shadow-lg shadow-teal-900/5 dark:shadow-black/30 flex justify-around items-center z-20 pb-[env(safe-area-inset-bottom,0)]">
       {bottomItems.map((item) => {
         const active = isActive(item.route);
         const Icon = item.icon;

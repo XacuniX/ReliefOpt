@@ -19,6 +19,7 @@ import { ROUTES } from "../routes";
 import RoleGate from "./RoleGate";
 import SyncIndicator from "./sync/SyncIndicator";
 import NotifDrawer from "./notifications/NotifDrawer";
+import { SmokeyBackground } from "./ui/login-form";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
@@ -120,6 +121,8 @@ function UserFooter() {
 
 export function AppShell({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   return (
     <div className="app-gradient relative flex h-screen overflow-hidden text-foreground antialiased">
@@ -132,6 +135,12 @@ export function AppShell({ children }) {
         aria-hidden
         className="glow-blob bottom-[-12rem] left-[-8rem] h-[28rem] w-[28rem] bg-teal-500/5"
       />
+
+      {/* Smokey animated backdrop (same as login page), theme-tuned for text readability */}
+      <div className="absolute inset-0 z-0">
+        <SmokeyBackground color="#0d9488" className="pointer-events-none" />
+        <div className={`absolute inset-0 ${isDark ? "bg-[#031a17]/80" : "bg-white/60"}`} />
+      </div>
 
       {/* Sidebar */}
       <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-teal-500/10 bg-[#0b1215]/95 backdrop-blur-md">

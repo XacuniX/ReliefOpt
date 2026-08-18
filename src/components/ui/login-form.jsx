@@ -208,7 +208,7 @@ export function LoginForm({
   }
 
   return (
-    <div className={`w-full max-w-sm p-8 space-y-6 bg-white/80 dark:bg-white/10 backdrop-blur-lg rounded-2xl border border-teal-500/20 dark:border-white/20 shadow-2xl ${className}`}>
+    <div className={`w-full max-w-sm p-8 space-y-6 rounded-2xl bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30 ${className}`}>
       <div className="text-center">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{logo}</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-gray-300">Sign in to continue</p>

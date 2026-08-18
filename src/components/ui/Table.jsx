@@ -2,7 +2,7 @@ import { cn } from "../../lib/utils";
 
 export default function Table({ columns, data, onSort, sortKey, sortDir, className, onRowClick }) {
   return (
-    <div className={cn("glass-card rounded-xl overflow-hidden", className)}>
+    <div className={cn("rounded-xl overflow-hidden bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30", className)}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[800px] text-sm">
           <thead>
@@ -39,7 +39,7 @@ export default function Table({ columns, data, onSort, sortKey, sortDir, classNa
               </tr>
             ) : (
               data.map((row, i) => (
-                <tr key={row.id || i} className={`${i % 2 === 0 ? "bg-white dark:bg-card" : "bg-slate-50/60 dark:bg-card"} border-t border-slate-200 dark:border-border hover:bg-slate-100/70 dark:hover:bg-muted/30 transition-colors ${onRowClick ? "cursor-pointer" : ""}`} onClick={() => onRowClick?.(row)}>
+                <tr key={row.id || i} className={`${i % 2 === 0 ? "bg-white/40 dark:bg-white/5" : "bg-slate-50/50 dark:bg-white/5"} border-t border-slate-200 dark:border-border hover:bg-slate-100/70 dark:hover:bg-muted/30 transition-colors ${onRowClick ? "cursor-pointer" : ""}`} onClick={() => onRowClick?.(row)}>
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
                       {col.render ? col.render(row) : row[col.key]}

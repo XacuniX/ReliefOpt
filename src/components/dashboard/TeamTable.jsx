@@ -39,13 +39,13 @@ export default function TeamTable() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[780px] text-sm">
             <thead>
-              <tr className="bg-muted/50">
+              <tr className="bg-slate-100 dark:bg-slate-800/60">
                 {columns.map(({ key, label }) => (
                   <th key={key} scope="col" className="px-4 py-3 text-left">
                     <button
                       type="button"
                       onClick={() => toggleSort(key)}
-                      className="text-xs font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                      className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-900 dark:hover:text-white transition-colors"
                     >
                       {label}
                       {sort.key === key && (
@@ -58,15 +58,15 @@ export default function TeamTable() {
             </thead>
             <tbody>
               {sorted.map((team) => (
-                <tr key={team.id} className="border-t border-border hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 whitespace-nowrap">{team.id}</td>
-                  <td className="px-4 py-3 font-semibold">{team.leader}</td>
-                  <td className="px-4 py-3">{team.location}</td>
+                <tr key={team.id} className="border-t border-slate-200 dark:border-border hover:bg-slate-100/70 dark:hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{team.id}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-300">{team.leader}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{team.location}</td>
                   <td className="px-4 py-3">
                     <Badge color={statusColors[team.status]} text={team.status} />
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{team.lastSync || "N/A"}</td>
-                  <td className="px-4 py-3 max-w-[240px]">{team.activeTask || "—"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300">{team.lastSync || "N/A"}</td>
+                  <td className="px-4 py-3 max-w-[240px] text-slate-700 dark:text-slate-300">{team.activeTask || "—"}</td>
                 </tr>
               ))}
             </tbody>

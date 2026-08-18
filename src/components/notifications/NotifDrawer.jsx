@@ -32,7 +32,7 @@ export default function NotifDrawer() {
     <>
       <button
         type="button"
-        className="fixed top-4 right-4 z-[1400] h-10 w-10 rounded-full glass-card flex items-center justify-center cursor-pointer hover:border-teal-500/50 transition-all"
+        className="fixed top-4 right-4 z-[1400] h-10 w-10 rounded-full bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30 flex items-center justify-center cursor-pointer hover:border-teal-500/50 transition-all"
         onClick={() => setOpen(true)}
         aria-label={`Notifications (${unreadCount} unread)`}
       >

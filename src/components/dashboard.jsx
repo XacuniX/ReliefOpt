@@ -62,7 +62,7 @@ const tooltipStyle = {
 
 function KpiCard({ label, value, icon: Icon, trend }) {
   return (
-    <div className="glass-card group rounded-xl p-5 transition-all hover:border-teal-500/40">
+    <div className="group rounded-xl p-5 transition-all hover:border-teal-500/40 bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30">
       <div className="flex items-start justify-between">
         <span className="rounded-lg bg-teal-500/10 p-2 ring-1 ring-teal-500/20 transition-colors group-hover:bg-teal-500/20">
           <Icon className="h-4 w-4 text-teal-300" />
@@ -91,7 +91,7 @@ function KpiCard({ label, value, icon: Icon, trend }) {
 
 function Card({ title, children, className = "" }) {
   return (
-    <div className={`glass-card rounded-xl p-6 transition-all hover:border-teal-500/40 ${className}`}>
+    <div className={`rounded-xl p-6 transition-all hover:border-teal-500/40 bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30 ${className}`}>
       <h2 className="text-base font-semibold text-slate-900 dark:text-zinc-50">{title}</h2>
       <div className="mt-4">{children}</div>
     </div>
