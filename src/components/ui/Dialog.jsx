@@ -32,7 +32,7 @@ export default function Dialog({ isOpen, onClose, title, children }) {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
-      <div className="relative w-full max-w-lg max-h-[85vh] rounded-xl bg-card border shadow-lg animate-[dialog-slide-up_0.25s_ease] flex flex-col">
+      <div className="glass-card relative w-full max-w-lg max-h-[85vh] rounded-xl shadow-[0_8px_48px_rgba(0,0,0,0.5)] animate-[dialog-slide-up_0.25s_ease] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h2 className="text-lg font-bold text-foreground m-0">{title}</h2>
           <button

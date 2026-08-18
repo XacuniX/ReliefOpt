@@ -1,47 +1,172 @@
 import { useMemo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
-import { BadgeCheck, AlertTriangle, Users, Package } from "lucide-react";
-import { reports, teams, alerts, inventory } from "../mockData";
-import { useTheme } from "../context/ThemeContext";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  Siren,
+  ShieldCheck,
+  AlertCircle,
+  Package,
+  Hourglass,
+  Satellite,
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { alerts as mockAlerts } from "../mockData";
 
-const lightColors = ["#0d9488", "#f59e0b", "#0369a1", "#e53e3e", "#6b7280"];
-const darkColors = ["#2dd4bf", "#f59e0b", "#38bdf8", "#f75555", "#8895a9"];
+/* ── Shared styles ─────────────────────────────────────────────────── */
 
-const severityStyles = {
-  Critical: "border-red-500",
-  High: "border-amber-500",
-  Medium: "border-teal-500",
+const statusBadge = {
+  Deployed: "bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30",
+  Standby: "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/25",
+  Offline: "bg-zinc-600/20 text-zinc-400 ring-1 ring-zinc-600/30",
 };
 
-function KpiCard({ icon: Icon, label, value, accent }) {
+const severityBadge = {
+  Critical: "bg-red-500/10 text-red-400",
+  High: "bg-amber-500/10 text-amber-400",
+  Medium: "bg-teal-500/10 text-teal-400",
+};
+
+const severityBorder = {
+  Critical: "border-l-red-500",
+  High: "border-l-amber-500",
+  Medium: "border-l-teal-500",
+};
+
+const pieColors = {
+  Flood: "#14b8a6",
+  Cyclone: "#f59e0b",
+  Earthquake: "#38bdf8",
+  Fire: "#f75555",
+  Other: "#94a3b8",
+};
+
+const tooltipStyle = {
+  background: "rgba(13, 19, 23, 0.92)",
+  border: "1px solid rgba(20, 184, 166, 0.25)",
+  borderRadius: 8,
+  fontSize: 12,
+  color: "#e4e4e7",
+};
+
+/* ── KPI card ──────────────────────────────────────────────────────── */
+
+function KpiCard({ label, value, icon: Icon, trend }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-        <span className={`rounded-lg p-2 ${accent}`}>
-          <Icon className="h-4 w-4" />
+    <div className="glass-card group rounded-xl p-5 transition-all hover:border-teal-500/40">
+      <div className="flex items-start justify-between">
+        <span className="rounded-lg bg-teal-500/10 p-2 ring-1 ring-teal-500/20 transition-colors group-hover:bg-teal-500/20">
+          <Icon className="h-4 w-4 text-teal-300" />
         </span>
+        {trend && (
+          <span
+            className={`text-sm font-bold ${
+              trend === "up" ? "text-emerald-400" : "text-red-400"
+            }`}
+          >
+            {trend === "up" ? "▲" : "▼"}
+          </span>
+        )}
       </div>
-      <p className="mt-3 text-3xl font-extrabold text-foreground">{value.toLocaleString()}</p>
+      <p className="mt-4 text-3xl font-semibold tracking-tight text-zinc-50">
+        {value.toLocaleString()}
+      </p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+        {label}
+      </p>
     </div>
   );
 }
 
+/* ── Card shell (plain glass, grid-safe) ───────────────────────────── */
+
+function Card({ title, children, className = "" }) {
+  return (
+    <div className={`glass-card rounded-xl p-6 transition-all hover:border-teal-500/40 ${className}`}>
+      <h2 className="text-base font-semibold text-zinc-50">{title}</h2>
+      <div className="mt-4">{children}</div>
+    </div>
+  );
+}
+
+/* ── Main dashboard ────────────────────────────────────────────────── */
+
 export function Dashboard() {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  const chartColors = isDark ? darkColors : lightColors;
-  const [visibleAlerts, setVisibleAlerts] = useState(alerts);
+  const { ready, reports, teams, inventory } = useData();
+  const [visibleAlerts, setVisibleAlerts] = useState([]);
+  const [sort, setSort] = useState({ key: "id", direction: "asc" });
+
+  const alerts = useMemo(
+    () => (visibleAlerts.length > 0 ? visibleAlerts : mockAlerts),
+    [visibleAlerts]
+  );
 
   const kpis = useMemo(
     () => [
-      { label: "Active Incidents", value: reports.filter((r) => r.status !== "Resolved").length, icon: AlertTriangle, accent: "bg-red-500/10 text-red-500" },
-      { label: "Deployed Teams", value: teams.filter((t) => t.status === "Deployed").length, icon: Users, accent: "bg-teal-500/10 text-teal-600 dark:text-teal-400" },
-      { label: "Supply Items", value: inventory.reduce((sum, i) => sum + i.qty, 0), icon: Package, accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-      { label: "Resolved Reports", value: reports.filter((r) => r.status === "Resolved").length, icon: BadgeCheck, accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+      {
+        label: "Active Incidents",
+        value: reports.filter((r) => r.status !== "Resolved").length,
+        icon: Siren,
+        trend: "up",
+      },
+      {
+        label: "Deployed Teams",
+        value: teams.filter((t) => t.status === "Deployed").length,
+        icon: ShieldCheck,
+        trend: "up",
+      },
+      {
+        label: "Critical Alerts",
+        value: alerts.filter((a) => a.severity === "Critical").length,
+        icon: AlertCircle,
+      },
+      {
+        label: "Total Supply Items",
+        value: inventory.reduce((sum, i) => sum + i.qty, 0),
+        icon: Package,
+        trend: "up",
+      },
+      {
+        label: "Pending Requests",
+        value: reports.filter((r) => r.status === "Pending").length,
+        icon: Hourglass,
+        trend: "down",
+      },
+      {
+        label: "Offline Nodes",
+        value: 2,
+        icon: Satellite,
+        trend: "down",
+      },
     ],
-    []
+    [reports, teams, alerts, inventory]
   );
+
+  const sortedTeams = useMemo(() => {
+    return [...teams].sort((a, b) => {
+      const aVal = a[sort.key];
+      const bVal = b[sort.key];
+      const cmp =
+        typeof aVal === "number" ? aVal - bVal : String(aVal).localeCompare(String(bVal));
+      return sort.direction === "asc" ? cmp : -cmp;
+    });
+  }, [teams, sort]);
+
+  function toggleSort(key) {
+    setSort((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  }
 
   const barData = useMemo(() => {
     const warehouses = ["Warehouse A", "Warehouse B", "Warehouse C", "Warehouse D", "Warehouse E"];
@@ -49,7 +174,7 @@ export function Dashboard() {
       name: wh,
       supplies: inventory.filter((i) => i.warehouse === wh).reduce((sum, i) => sum + i.qty, 0),
     }));
-  }, []);
+  }, [inventory]);
 
   const pieData = useMemo(() => {
     const counts = {};
@@ -57,108 +182,217 @@ export function Dashboard() {
       counts[r.type] = (counts[r.type] || 0) + 1;
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, []);
+  }, [reports]);
+
+  function acknowledgeAlert(id) {
+    setVisibleAlerts((prev) => {
+      const current = prev.length > 0 ? prev : alerts;
+      return current.filter((a) => a.id !== id);
+    });
+  }
+
+  /* Loading state */
+  if (!ready) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-32 animate-pulse rounded-xl border border-teal-500/10 bg-[#0d1317]/80"
+            />
+          ))}
+        </div>
+        <p className="py-10 text-center text-sm text-zinc-500">Loading dashboard…</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-foreground">Operations Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Real-time relief operations overview</p>
-      </header>
-
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        {kpis.map((kpi) => (
-          <KpiCard key={kpi.label} {...kpi} />
-        ))}
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">Supply Distribution by Warehouse</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={barData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#1f2a3d" : "#e0e4ea"} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: isDark ? "#8895a9" : "#6b7280" }} />
-              <YAxis tick={{ fontSize: 11, fill: isDark ? "#8895a9" : "#6b7280" }} />
-              <Tooltip
-                contentStyle={{
-                  background: isDark ? "#111827" : "#fff",
-                  border: `1px solid ${isDark ? "#1f2a3d" : "#e0e4ea"}`,
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-              />
-              <Bar dataKey="supplies" fill={isDark ? "#2dd4bf" : "#0d9488"} radius={[4, 4, 0, 0]} name="Supply Qty" />
-            </BarChart>
-          </ResponsiveContainer>
+    <div className="space-y-6">
+      {/* ── 1. KPI cards — single row of 6 ─────────────────────────── */}
+      <section aria-label="Key metrics">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {kpis.map((kpi) => (
+            <KpiCard key={kpi.label} {...kpi} />
+          ))}
         </div>
+      </section>
 
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">Incidents by Type</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" outerRadius={90} dataKey="value" nameKey="name">
-                {pieData.map((_, idx) => (
-                  <Cell key={idx} fill={chartColors[idx % chartColors.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: isDark ? "#111827" : "#fff",
-                  border: `1px solid ${isDark ? "#1f2a3d" : "#e0e4ea"}`,
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Live alerts */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-foreground">Live Alerts</h3>
-        {visibleAlerts.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">No new alerts</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {visibleAlerts.map((alert) => {
-              const borderColor = severityStyles[alert.severity] || "border-border";
-              return (
-                <div key={alert.id} className={`border-l-[3px] ${borderColor} rounded-r-md bg-muted/40 p-3`}>
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-primary">{alert.location}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(alert.timestamp).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                        alert.severity === "Critical"
-                          ? "bg-red-500/10 text-red-500"
-                          : alert.severity === "High"
-                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                            : "bg-teal-500/10 text-teal-600 dark:text-teal-400"
-                      }`}
+      {/* ── 2. Team table (8/12) + Live alerts (4/12) ──────────────── */}
+      <section aria-label="Deployment and alerts" className="my-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Team deployment status */}
+          <Card title="Team Deployment Status" className="lg:col-span-8">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead>
+                  <tr className="border-b border-teal-500/10">
+                    {[
+                      ["Team ID", "id"],
+                      ["Leader", "leader"],
+                      ["Location", "location"],
+                      ["Status", "status"],
+                      ["Last Sync", "lastSync"],
+                      ["Assigned Task", "activeTask"],
+                    ].map(([label, key]) => (
+                      <th key={key} scope="col" className="px-3 py-2 text-left">
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(key)}
+                          className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:text-teal-300"
+                        >
+                          {label}
+                          {sort.key === key && (
+                            <span className="ml-1">{sort.direction === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedTeams.map((team) => (
+                    <tr
+                      key={team.id}
+                      className="border-b border-teal-500/5 transition-colors hover:bg-teal-500/5"
                     >
-                      {alert.severity}
-                    </span>
-                  </div>
-                  <p className="text-[13px] leading-relaxed text-foreground/80">{alert.message}</p>
-                  <button
-                    onClick={() => setVisibleAlerts((prev) => prev.filter((a) => a.id !== alert.id))}
-                    className="mt-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+                      <td className="px-3 py-3 whitespace-nowrap font-medium text-teal-300/90">
+                        {team.id}
+                      </td>
+                      <td className="px-3 py-3 font-semibold text-zinc-100">{team.leader}</td>
+                      <td className="px-3 py-3 text-zinc-300">{team.location}</td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            statusBadge[team.status] || "bg-zinc-800 text-zinc-300"
+                          }`}
+                        >
+                          {team.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-zinc-500">
+                        {team.lastSync || "N/A"}
+                      </td>
+                      <td className="px-3 py-3 max-w-[240px] text-zinc-400">
+                        {team.activeTask || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Live alerts feed */}
+          <Card title="Live Alerts" className="lg:col-span-4">
+            <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto">
+              {alerts.length === 0 ? (
+                <p className="py-8 text-center text-sm text-zinc-500">No new alerts</p>
+              ) : (
+                alerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`rounded-r-lg border-l-[3px] bg-white/[0.03] p-3 transition-colors hover:bg-white/[0.06] ${
+                      severityBorder[alert.severity] || "border-l-zinc-600"
+                    }`}
                   >
-                    Acknowledge
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-zinc-100">{alert.location}</span>
+                      <span className="text-xs text-zinc-500">
+                        {new Date(alert.timestamp).toLocaleString([], {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                          severityBadge[alert.severity] || "bg-zinc-700 text-zinc-300"
+                        }`}
+                      >
+                        {alert.severity}
+                      </span>
+                    </div>
+                    <p className="text-[13px] leading-relaxed text-zinc-400">{alert.message}</p>
+                    <button
+                      type="button"
+                      onClick={() => acknowledgeAlert(alert.id)}
+                      className="mt-1.5 text-xs font-medium text-zinc-500 transition-colors hover:text-teal-300"
+                    >
+                      Acknowledge
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* ── 3. Analytics — 50/50 charts ────────────────────────────── */}
+      <section aria-label="Analytics overview">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card title="Supply Distribution by Warehouse">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#71717a", fontSize: 12 }}
+                    dy={8}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#71717a", fontSize: 12 }}
+                    domain={[0, 8000]}
+                  />
+                  <Tooltip cursor={{ fill: "rgba(20,184,166,0.06)" }} contentStyle={tooltipStyle} />
+                  <Bar
+                    dataKey="supplies"
+                    fill="#14b8a6"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={48}
+                    name="Supply Qty"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card title="Incidents by Type">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={45}
+                    dataKey="value"
+                    nameKey="name"
+                    paddingAngle={2}
+                    stroke="transparent"
+                  >
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={pieColors[entry.name] || "#94a3b8"} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: 12, color: "#a1a1aa" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      </section>
     </div>
   );
 }

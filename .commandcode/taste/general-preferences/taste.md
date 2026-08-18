@@ -10,6 +10,7 @@
 - Prefers dark mode palettes that feel professional and industry-relevant — not generic or overly playful. Confidence: 0.6
 - Prefers pasted task specs/code to be implemented faithfully as given — exact code, function names, and arguments preserved rather than adapted or "improved." Confidence: 0.7
 - Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"). Confidence: 0.8
-- Prefers to receive commit messages as ready-to-paste text rather than having the agent run the git commit itself — wants to control when commits happen ("dont do a commit yourself, just make me the message"). Confidence: 0.7
+- Prefers to receive commit messages as ready-to-paste text rather than having the agent run the git commit itself — wants to control when commits happen ("dont do a commit yourself, just make me the message", "just suggest"). Confidence: 0.85
+- Prefers one-line commit messages — a single-line subject with no body, trailers, or extra detail ("one liner commit message"). Confidence: 0.8
 - Prefers pasted task specs/code to be implemented faithfully as given — exact code, function names, and arguments preserved rather than adapted or "improved." Confidence: 0.7
 - Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"). Confidence: 0.8

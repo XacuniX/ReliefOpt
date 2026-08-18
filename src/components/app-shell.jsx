@@ -1,21 +1,31 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import * as ReactRouter from "react-router-dom";
 import * as Avatar from "@radix-ui/react-avatar";
-import * as Collapsible from "@radix-ui/react-collapsible";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import * as Separator from "@radix-ui/react-separator";
 import {
-  LayoutDashboard, Map, FileText, Pencil, Package, CheckSquare, Truck,
-  Users, Settings, Sun, Moon, LogOut, ChevronDown, Menu, X, PanelLeftClose
+  LayoutDashboard,
+  Map,
+  FileText,
+  Pencil,
+  Package,
+  CheckSquare,
+  Truck,
+  Users,
+  Settings,
+  Sun,
+  Moon,
+  LogOut,
 } from "lucide-react";
 import { ROUTES } from "../routes";
 import RoleGate from "./RoleGate";
 import SyncIndicator from "./sync/SyncIndicator";
+import NotifDrawer from "./notifications/NotifDrawer";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
+const { Link, useLocation, useNavigate, Outlet } = ReactRouter;
+
 const navItems = [
-  { label: "Dashboard", route: ROUTES.DASHBOARD, icon: LayoutDashboard, roles: ["central_admin", "warehouse_manager"] },
+  { label: "Dashboard", route: ROUTES.DASHBOARD, icon: LayoutDashboard, roles: null },
   { label: "Map", route: ROUTES.MAP, icon: Map, roles: null },
   { label: "Reports", route: ROUTES.REPORTS, icon: FileText, roles: null },
   { label: "Submit Report", route: ROUTES.SUBMIT_REPORT, icon: Pencil, roles: null },
@@ -26,197 +36,141 @@ const navItems = [
   { label: "Settings", route: ROUTES.SETTINGS, icon: Settings, roles: null },
 ];
 
-function NavLink({ item, collapsed, onNavigate }) {
+function NavLink({ item, onNavigate }) {
   const location = useLocation();
-  const active = location.pathname.startsWith(item.route);
+  const active =
+    location.pathname === item.route ||
+    (item.route === ROUTES.DASHBOARD && location.pathname === "/demo");
   const Icon = item.icon;
 
   const link = (
     <Link
       to={item.route}
       onClick={onNavigate}
-      className={`group flex items-center gap-3 mx-2 rounded-lg transition-colors ${
-        collapsed ? "justify-center p-2.5" : "px-3 py-2.5"
-      } ${
+      title={item.label}
+      className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all ${
         active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+          ? "bg-teal-500/15 font-medium text-teal-200 shadow-[inset_0_0_0_1px_rgba(20,184,166,0.25)]"
+          : "text-zinc-300 hover:bg-white/5 hover:text-zinc-100"
       }`}
-      title={collapsed ? item.label : undefined}
     >
-      <Icon className="h-5 w-5 shrink-0" />
-      {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+      <Icon
+        className={`h-4 w-4 shrink-0 ${
+          active ? "text-teal-400" : "text-zinc-400 group-hover:text-teal-300"
+        }`}
+      />
+      <span className="min-w-0 truncate">{item.label}</span>
     </Link>
   );
 
   return item.roles ? <RoleGate allowed={item.roles}>{link}</RoleGate> : link;
 }
 
-export function AppShell({ children }) {
+function UserFooter() {
   const { currentUser, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
-  function handleLogout() {
-    logout();
-    navigate(ROUTES.LOGIN);
-  }
-
-  const initials = (currentUser?.name || "?")
+  const initials = (currentUser?.name || "RU")
     .split(" ")
     .map((p) => p[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
 
-  const sidebarContent = (
-    <div className="flex h-full flex-col bg-sidebar">
-      <div className={`flex items-center border-b border-sidebar-border ${collapsed ? "justify-center h-14 px-2" : "h-16 px-5"}`}>
-        <span className="text-lg font-bold text-sidebar-foreground">
-          Relief<span className="text-primary">Opt</span>
-        </span>
+  function handleLogout() {
+    logout();
+    navigate(ROUTES.LOGIN);
+  }
+
+  return (
+    <div className="flex items-center gap-3 border-t border-teal-500/10 px-4 py-4">
+      <Avatar.Root className="relative inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full bg-teal-500/20 ring-1 ring-teal-500/30">
+        <Avatar.Fallback className="flex h-full w-full items-center justify-center text-xs font-semibold text-teal-300">
+          {initials}
+        </Avatar.Fallback>
+      </Avatar.Root>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-zinc-100">{currentUser?.name}</p>
+        <p className="truncate text-xs capitalize text-teal-400/70">
+          {(currentUser?.role || "").replace(/_/g, " ")}
+        </p>
       </div>
-
-      <nav className="flex-1 overflow-y-auto py-2">
-        {navItems.map((item) => (
-          <NavLink key={item.route} item={item} collapsed={collapsed} onNavigate={() => setMobileOpen(false)} />
-        ))}
-      </nav>
-
-      <div className="border-t border-sidebar-border p-3">
-        <div className={`flex items-center gap-2 mb-2 ${collapsed ? "justify-center" : ""}`}>
-          <Avatar.Root className="relative inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full align-middle">
-            <Avatar.Image
-              src={`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(currentUser?.name || "User")}`}
-              alt={currentUser?.name || "User"}
-              className="h-full w-full object-cover"
-            />
-            <Avatar.Fallback className="flex h-full w-full items-center justify-center bg-primary text-xs font-bold text-primary-foreground">
-              {initials}
-            </Avatar.Fallback>
-          </Avatar.Root>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-sidebar-foreground">{currentUser?.name}</p>
-              <p className="truncate text-[10px] capitalize text-sidebar-foreground/50">
-                {(currentUser?.role || "").replace(/_/g, " ")}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className={`flex gap-1 ${collapsed ? "flex-col items-center" : ""}`}>
-          <button
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            className="rounded-md p-1.5 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            aria-label="Toggle theme"
-          >
-            {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <button
-            onClick={() => setCollapsed((c) => !c)}
-            className="hidden md:block rounded-md p-1.5 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            aria-label="Collapse sidebar"
-          >
-            <PanelLeftClose className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleLogout}
-            className="rounded-md p-1.5 text-sidebar-foreground/60 transition-colors hover:bg-red-400/10 hover:text-red-400"
-            aria-label="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          aria-label="Toggle theme"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-teal-500/10 hover:text-teal-300"
+        >
+          {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label="Sign out"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
+}
+
+export function AppShell({ children }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Desktop sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-30 hidden md:block transition-all duration-200 ${collapsed ? "w-16" : "w-60"}`}>
-        {sidebarContent}
+    <div className="app-gradient relative flex h-screen overflow-hidden text-zinc-200 antialiased">
+      {/* Ambient teal glows */}
+      <div
+        aria-hidden
+        className="glow-blob right-[-10rem] top-[-10rem] h-96 w-96 bg-teal-500/10"
+      />
+      <div
+        aria-hidden
+        className="glow-blob bottom-[-12rem] left-[-8rem] h-[28rem] w-[28rem] bg-teal-500/5"
+      />
+
+      {/* Sidebar */}
+      <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-teal-500/10 bg-[#0b1215]/80 backdrop-blur-md">
+        {/* Brand */}
+        <div className="flex h-16 items-center gap-2.5 px-6">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 text-zinc-950 shadow-[0_0_16px_rgba(20,184,166,0.45)]">
+            <Package className="h-4 w-4" />
+          </div>
+          <span className="text-lg font-semibold tracking-tight text-zinc-50">
+            Relief<span className="text-teal-400">Opt</span>
+          </span>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+          {navItems.map((item) => (
+            <NavLink key={item.route} item={item} onNavigate={() => setMobileOpen(false)} />
+          ))}
+        </nav>
+
+        {/* User profile footer */}
+        <UserFooter />
       </aside>
 
-      {/* Mobile drawer */}
-      <Collapsible.Root open={mobileOpen} onOpenChange={setMobileOpen}>
-        <div className="md:hidden">
-          {mobileOpen && (
-            <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)} />
-          )}
-          <Collapsible.Content className="fixed inset-y-0 left-0 z-50 w-60">
-            {sidebarContent}
-          </Collapsible.Content>
-        </div>
-      </Collapsible.Root>
-
-      {/* Mobile top bar */}
-      <header className="fixed inset-x-0 top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-card px-4 md:hidden">
-        <button onClick={() => setMobileOpen(true)} aria-label="Open menu" className="text-foreground">
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-        <span className="font-bold text-foreground">
-          Relief<span className="text-primary">Opt</span>
-        </span>
-        <div className="ml-auto">
+      {/* Main column */}
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        {/* Header */}
+        <header className="flex h-16 shrink-0 items-center justify-end gap-3 border-b border-teal-500/10 bg-[#0b1215]/60 pr-16 backdrop-blur-md">
           <SyncIndicator />
-        </div>
-      </header>
+          <NotifDrawer />
+        </header>
 
-      {/* User menu (desktop) */}
-      <div className="fixed right-4 top-4 z-20 hidden md:block">
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button className="flex items-center gap-2 rounded-full border border-border bg-card px-2 py-1 shadow-sm transition-colors hover:bg-muted/50">
-              <Avatar.Root className="relative inline-flex h-7 w-7 overflow-hidden rounded-full">
-                <Avatar.Image
-                  src={`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(currentUser?.name || "User")}`}
-                  alt={currentUser?.name || "User"}
-                  className="h-full w-full object-cover"
-                />
-                <Avatar.Fallback className="flex h-full w-full items-center justify-center bg-primary text-[10px] font-bold text-primary-foreground">
-                  {initials}
-                </Avatar.Fallback>
-              </Avatar.Root>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              align="end"
-              sideOffset={6}
-              className="z-50 min-w-[180px] rounded-lg border border-border bg-card p-1 shadow-lg"
-            >
-              <div className="px-2 py-1.5">
-                <p className="text-sm font-semibold text-foreground">{currentUser?.name}</p>
-                <p className="text-xs capitalize text-muted-foreground">{(currentUser?.role || "").replace(/_/g, " ")}</p>
-              </div>
-              <Separator.Root className="my-1 h-px bg-border" />
-              <DropdownMenu.Item
-                onSelect={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none hover:bg-muted"
-              >
-                {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
-              </DropdownMenu.Item>
-              <DropdownMenu.Item
-                onSelect={handleLogout}
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-red-500 outline-none hover:bg-red-500/10"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            {children ?? <Outlet />}
+          </div>
+        </main>
       </div>
-
-      <main className={`transition-all duration-200 md:pt-0 ${collapsed ? "md:pl-16" : "md:pl-60"} pt-14`}>
-        <div className="px-4 py-6 md:px-8">{children}</div>
-      </main>
     </div>
   );
 }

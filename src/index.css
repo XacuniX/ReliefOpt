@@ -57,28 +57,28 @@
 }
 
 .dark {
-  --background: #0a0f1a;
+  --background: #0a0f0d;
   --foreground: #e4e8f0;
-  --card: #111827;
+  --card: #0d1317;
   --card-foreground: #e4e8f0;
-  --primary: #2dd4bf;
+  --primary: #14b8a6;
   --primary-foreground: #042f2e;
-  --secondary: #1a2332;
+  --secondary: #111c1f;
   --secondary-foreground: #e4e8f0;
-  --muted: #1a2332;
-  --muted-foreground: #8895a9;
-  --accent: #1a2332;
-  --accent-foreground: #e4e8f0;
+  --muted: #111c1f;
+  --muted-foreground: #94a3b8;
+  --accent: #0f2624;
+  --accent-foreground: #5eead4;
   --destructive: #f75555;
   --destructive-foreground: #ffffff;
-  --border: #1f2a3d;
-  --ring: #2dd4bf;
-  --sidebar: #070b14;
+  --border: #1c2a2e;
+  --ring: #14b8a6;
+  --sidebar: #0b1215;
   --sidebar-foreground: #e4e8f0;
-  --sidebar-accent: rgba(45, 212, 191, 0.15);
-  --sidebar-accent-foreground: #2dd4bf;
-  --sidebar-border: rgba(45, 212, 191, 0.08);
-  --success: #22c55e;
+  --sidebar-accent: rgba(20, 184, 166, 0.16);
+  --sidebar-accent-foreground: #5eead4;
+  --sidebar-border: rgba(20, 184, 166, 0.12);
+  --success: #10b981;
   --warning: #f59e0b;
   --info: #38bdf8;
 }
@@ -127,4 +127,37 @@ body {
 
 .leaflet-default-icon-path {
   background-image: url("https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png");
+}
+
+/* Glass card surface — frosted, teal-tinted, elevated */
+.glass-card {
+  background: rgba(13, 19, 23, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(20, 184, 166, 0.16);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+/* Ambient teal glow blobs for the app background */
+.glow-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+  pointer-events: none;
+}
+
+/* App-wide dark gradient backdrop */
+.app-gradient {
+  background:
+    radial-gradient(ellipse at top right, rgba(0, 56, 50, 0.35), transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(20, 184, 166, 0.08), transparent 45%),
+    linear-gradient(135deg, #0a0f0d 0%, #111827 55%, #041e1a 100%);
+}
+
+/* Teal gradient border for sidebar/header edges */
+.teal-edge {
+  border-color: transparent;
+  background-image: linear-gradient(to bottom, rgba(20, 184, 166, 0.35), rgba(20, 184, 166, 0.05) 60%, transparent);
+  background-origin: border-box;
+  background-clip: border-box;
 }

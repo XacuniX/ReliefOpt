@@ -26,7 +26,7 @@ export default function Toast({ type = "info", message, onDismiss, className }) 
   return createPortal(
     <div
       className={cn(
-        "fixed bottom-6 right-6 z-[2000] max-w-sm rounded-lg bg-card border border-border border-l-4 shadow-lg px-5 py-3.5 flex items-center gap-3 animate-[toast-slide-in_0.3s_ease-out]",
+        "glass-card fixed bottom-6 right-6 z-[2000] max-w-sm rounded-lg border-l-4 shadow-lg px-5 py-3.5 flex items-center gap-3 animate-[toast-slide-in_0.3s_ease-out]",
         typeStyles[type] || typeStyles.info,
         className
       )}

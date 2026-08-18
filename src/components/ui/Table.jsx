@@ -2,7 +2,7 @@ import { cn } from "../../lib/utils";
 
 export default function Table({ columns, data, onSort, sortKey, sortDir, className, onRowClick }) {
   return (
-    <div className={cn("rounded-xl bg-card border shadow-sm overflow-hidden", className)}>
+    <div className={cn("glass-card rounded-xl overflow-hidden", className)}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[800px] text-sm">
           <thead>
