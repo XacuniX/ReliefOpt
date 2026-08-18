@@ -18,7 +18,7 @@ import {
 import { ROUTES } from "../routes";
 import RoleGate from "./RoleGate";
 import SyncIndicator from "./sync/SyncIndicator";
-import NotifDrawer from "./notifications/NotifDrawer";
+import { NotificationPopover } from "./ui/notification-popover";
 import { SmokeyBackground } from "./ui/login-form";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -168,13 +168,13 @@ export function AppShell({ children }) {
       {/* Main column */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-end gap-3 border-b border-teal-500/10 bg-background/60 pr-16 backdrop-blur-md">
+        <header className="relative z-30 flex h-16 shrink-0 items-center justify-end gap-3 border-b border-teal-500/10 bg-background/60 pr-6 backdrop-blur-md">
           <SyncIndicator />
-          <NotifDrawer />
+          <NotificationPopover />
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="p-6">
             {children ?? <Outlet />}
           </div>

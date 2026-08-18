@@ -79,7 +79,7 @@ export default function CargoInputForm({ onOptimized }) {
       <Card className="mt-4">
         <h2 className="text-lg font-bold mb-4">Supply Items</h2>
         {items.map((item, index) => (
-          <div key={item.id} className={`grid grid-cols-[minmax(150px,2fr)_90px_repeat(4,minmax(70px,1fr))_auto] gap-2 py-3 ${index ? "border-t" : ""}`}>
+          <div key={item.id} className={`grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-[minmax(150px,2fr)_90px_repeat(4,minmax(70px,1fr))_auto] gap-2 py-3 ${index ? "border-t" : ""}`}>
             <Input label="Item Name" value={item.name} onChange={(e) => updateItem(item.id, "name", e.target.value)} />
             <Select
               label="Category"
