@@ -122,7 +122,7 @@ export function AppShell({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="app-gradient relative flex h-screen overflow-hidden text-zinc-200 antialiased">
+    <div className="app-gradient relative flex h-screen overflow-hidden text-foreground antialiased">
       {/* Ambient teal glows */}
       <div
         aria-hidden
@@ -134,7 +134,7 @@ export function AppShell({ children }) {
       />
 
       {/* Sidebar */}
-      <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-teal-500/10 bg-[#0b1215]/80 backdrop-blur-md">
+      <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-teal-500/10 bg-[#0b1215]/95 backdrop-blur-md">
         {/* Brand */}
         <div className="flex h-16 items-center gap-2.5 px-6">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 text-zinc-950 shadow-[0_0_16px_rgba(20,184,166,0.45)]">
@@ -159,7 +159,7 @@ export function AppShell({ children }) {
       {/* Main column */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-end gap-3 border-b border-teal-500/10 bg-[#0b1215]/60 pr-16 backdrop-blur-md">
+        <header className="flex h-16 shrink-0 items-center justify-end gap-3 border-b border-teal-500/10 bg-background/60 pr-16 backdrop-blur-md">
           <SyncIndicator />
           <NotifDrawer />
         </header>

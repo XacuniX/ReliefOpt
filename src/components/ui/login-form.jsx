@@ -208,10 +208,10 @@ export function LoginForm({
   }
 
   return (
-    <div className={`w-full max-w-sm p-8 space-y-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-2xl ${className}`}>
+    <div className={`w-full max-w-sm p-8 space-y-6 bg-white/80 dark:bg-white/10 backdrop-blur-lg rounded-2xl border border-teal-500/20 dark:border-white/20 shadow-2xl ${className}`}>
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-white">{logo}</h1>
-        <p className="mt-2 text-sm text-gray-300">Sign in to continue</p>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{logo}</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-gray-300">Sign in to continue</p>
       </div>
       <form className="space-y-8" onSubmit={handleSubmit}>
         {/* Username Input with Animated Label */}
@@ -221,14 +221,14 @@ export function LoginForm({
             id="floating_username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="block py-2.5 px-0 w-full text-sm text-white bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-500 peer"
+            className="block py-2.5 px-0 w-full text-sm text-slate-900 dark:text-white bg-transparent border-0 border-b-2 border-slate-300 dark:border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-teal-500 dark:focus:border-blue-500 peer"
             placeholder=" "
             autoComplete="username"
             required
           />
           <label
             htmlFor="floating_username"
-            className="absolute text-sm text-gray-300 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-blue-400 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+            className="absolute text-sm text-slate-500 dark:text-gray-300 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-teal-600 dark:peer-focus:text-blue-400 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
           >
             <User className="inline-block mr-2 -mt-1" size={16} />
             Username
@@ -241,13 +241,13 @@ export function LoginForm({
             id="floating_password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="block py-2.5 px-0 w-full text-sm text-white bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-500 peer"
+            className="block py-2.5 px-0 w-full text-sm text-slate-900 dark:text-white bg-transparent border-0 border-b-2 border-slate-300 dark:border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-teal-500 dark:focus:border-blue-500 peer"
             placeholder=" "
             required
           />
           <label
             htmlFor="floating_password"
-            className="absolute text-sm text-gray-300 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-blue-400 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+            className="absolute text-sm text-slate-500 dark:text-gray-300 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-teal-600 dark:peer-focus:text-blue-400 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
           >
             <Lock className="inline-block mr-2 -mt-1" size={16} />
             Password
@@ -255,7 +255,7 @@ export function LoginForm({
         </div>
 
         <div className="flex items-center justify-between">
-          <a href="#" className="text-xs text-gray-300 hover:text-white transition" onClick={(e) => e.preventDefault()}>
+          <a href="#" className="text-xs text-slate-500 hover:text-slate-900 dark:text-gray-300 dark:hover:text-white transition" onClick={(e) => e.preventDefault()}>
             Forgot Password?
           </a>
         </div>
@@ -263,14 +263,14 @@ export function LoginForm({
         <button
           type="submit"
           disabled={loading}
-          className="group w-full flex items-center justify-center py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg text-white font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 transition-all duration-300"
+          className="group w-full flex items-center justify-center py-3 px-4 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 rounded-lg text-white font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:ring-teal-500 transition-all duration-300"
         >
           {loading ? "Signing in..." : "Sign In"}
           <ArrowRight className="ml-2 h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
         </button>
 
         {error && (
-          <p className="text-sm font-medium text-red-400 text-center" role="alert">
+          <p className="text-sm font-medium text-red-600 dark:text-red-400 text-center" role="alert">
             {error}
           </p>
         )}

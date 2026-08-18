@@ -34,7 +34,7 @@ export default function LoginPage() {
       <SmokeyBackground color="#0d9488" />
       <div className="relative z-10 w-full flex flex-col items-center">
         <LoginForm onSubmit={handleSubmit} error={error} loading={loading} />
-        <div className="mt-5 p-3 glass-card rounded-md text-sm text-gray-300 text-center font-medium">
+        <div className="mt-5 p-3 glass-card rounded-md text-sm text-slate-700 dark:text-gray-300 text-center font-medium">
           Offline Mode Available — data will sync when connected
         </div>
       </div>

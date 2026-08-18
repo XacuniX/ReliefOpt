@@ -25,15 +25,15 @@ import { alerts as mockAlerts } from "../mockData";
 /* ── Shared styles ─────────────────────────────────────────────────── */
 
 const statusBadge = {
-  Deployed: "bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30",
-  Standby: "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/25",
-  Offline: "bg-zinc-600/20 text-zinc-400 ring-1 ring-zinc-600/30",
+  Deployed: "bg-teal-100 text-teal-800 ring-1 ring-teal-500/30 dark:bg-teal-500/15 dark:text-teal-400 dark:ring-teal-500/30",
+  Standby: "bg-amber-100 text-amber-800 ring-1 ring-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/25",
+  Offline: "bg-slate-200 text-slate-700 ring-1 ring-slate-400/30 dark:bg-zinc-600/20 dark:text-zinc-400 dark:ring-zinc-600/30",
 };
 
 const severityBadge = {
-  Critical: "bg-red-500/10 text-red-400",
-  High: "bg-amber-500/10 text-amber-400",
-  Medium: "bg-teal-500/10 text-teal-400",
+  Critical: "bg-red-100 text-red-800 dark:bg-red-500/10 dark:text-red-400",
+  High: "bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400",
+  Medium: "bg-teal-100 text-teal-800 dark:bg-teal-500/10 dark:text-teal-400",
 };
 
 const severityBorder = {
@@ -51,11 +51,11 @@ const pieColors = {
 };
 
 const tooltipStyle = {
-  background: "rgba(13, 19, 23, 0.92)",
-  border: "1px solid rgba(20, 184, 166, 0.25)",
+  background: "rgba(255, 255, 255, 0.95)",
+  border: "1px solid rgba(13, 148, 136, 0.25)",
   borderRadius: 8,
   fontSize: 12,
-  color: "#e4e4e7",
+  color: "#1a1d29",
 };
 
 /* ── KPI card ──────────────────────────────────────────────────────── */
@@ -77,10 +77,10 @@ function KpiCard({ label, value, icon: Icon, trend }) {
           </span>
         )}
       </div>
-      <p className="mt-4 text-3xl font-semibold tracking-tight text-zinc-50">
+      <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 dark:text-zinc-50">
         {value.toLocaleString()}
       </p>
-      <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-500">
         {label}
       </p>
     </div>
@@ -92,7 +92,7 @@ function KpiCard({ label, value, icon: Icon, trend }) {
 function Card({ title, children, className = "" }) {
   return (
     <div className={`glass-card rounded-xl p-6 transition-all hover:border-teal-500/40 ${className}`}>
-      <h2 className="text-base font-semibold text-zinc-50">{title}</h2>
+      <h2 className="text-base font-semibold text-slate-900 dark:text-zinc-50">{title}</h2>
       <div className="mt-4">{children}</div>
     </div>
   );
@@ -199,11 +199,11 @@ export function Dashboard() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="h-32 animate-pulse rounded-xl border border-teal-500/10 bg-[#0d1317]/80"
+              className="h-32 animate-pulse rounded-xl border border-teal-500/10 bg-slate-200/60 dark:bg-[#0d1317]/80"
             />
           ))}
         </div>
-        <p className="py-10 text-center text-sm text-zinc-500">Loading dashboard…</p>
+        <p className="py-10 text-center text-sm text-slate-500 dark:text-zinc-500">Loading dashboard…</p>
       </div>
     );
   }
@@ -227,7 +227,7 @@ export function Dashboard() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
                 <thead>
-                  <tr className="border-b border-teal-500/10">
+                  <tr className="border-b border-slate-200 dark:border-teal-500/10">
                     {[
                       ["Team ID", "id"],
                       ["Leader", "leader"],
@@ -240,7 +240,7 @@ export function Dashboard() {
                         <button
                           type="button"
                           onClick={() => toggleSort(key)}
-                          className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:text-teal-300"
+                          className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-500 transition-colors hover:text-teal-600 dark:hover:text-teal-300"
                         >
                           {label}
                           {sort.key === key && (
@@ -255,26 +255,26 @@ export function Dashboard() {
                   {sortedTeams.map((team) => (
                     <tr
                       key={team.id}
-                      className="border-b border-teal-500/5 transition-colors hover:bg-teal-500/5"
+                      className="border-b border-slate-200 dark:border-teal-500/5 transition-colors hover:bg-teal-500/5"
                     >
-                      <td className="px-3 py-3 whitespace-nowrap font-medium text-teal-300/90">
+                      <td className="px-3 py-3 whitespace-nowrap font-medium text-teal-700 dark:text-teal-300/90">
                         {team.id}
                       </td>
-                      <td className="px-3 py-3 font-semibold text-zinc-100">{team.leader}</td>
-                      <td className="px-3 py-3 text-zinc-300">{team.location}</td>
+                      <td className="px-3 py-3 font-semibold text-slate-900 dark:text-zinc-100">{team.leader}</td>
+                      <td className="px-3 py-3 text-slate-600 dark:text-zinc-300">{team.location}</td>
                       <td className="px-3 py-3">
                         <span
                           className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                            statusBadge[team.status] || "bg-zinc-800 text-zinc-300"
+                            statusBadge[team.status] || "bg-slate-200 text-slate-700 dark:bg-zinc-800 dark:text-zinc-300"
                           }`}
                         >
                           {team.status}
                         </span>
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-zinc-500">
+                      <td className="px-3 py-3 whitespace-nowrap text-slate-500 dark:text-zinc-500">
                         {team.lastSync || "N/A"}
                       </td>
-                      <td className="px-3 py-3 max-w-[240px] text-zinc-400">
+                      <td className="px-3 py-3 max-w-[240px] text-slate-600 dark:text-zinc-400">
                         {team.activeTask || "—"}
                       </td>
                     </tr>
@@ -288,18 +288,18 @@ export function Dashboard() {
           <Card title="Live Alerts" className="lg:col-span-4">
             <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto">
               {alerts.length === 0 ? (
-                <p className="py-8 text-center text-sm text-zinc-500">No new alerts</p>
+                <p className="py-8 text-center text-sm text-slate-500 dark:text-zinc-500">No new alerts</p>
               ) : (
                 alerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className={`rounded-r-lg border-l-[3px] bg-white/[0.03] p-3 transition-colors hover:bg-white/[0.06] ${
-                      severityBorder[alert.severity] || "border-l-zinc-600"
+                    className={`rounded-r-lg border-l-[3px] bg-slate-50 dark:bg-white/[0.03] p-3 transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.06] ${
+                      severityBorder[alert.severity] || "border-l-slate-400 dark:border-l-zinc-600"
                     }`}
                   >
                     <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-zinc-100">{alert.location}</span>
-                      <span className="text-xs text-zinc-500">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">{alert.location}</span>
+                      <span className="text-xs text-slate-500 dark:text-zinc-500">
                         {new Date(alert.timestamp).toLocaleString([], {
                           dateStyle: "short",
                           timeStyle: "short",
@@ -307,17 +307,17 @@ export function Dashboard() {
                       </span>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                          severityBadge[alert.severity] || "bg-zinc-700 text-zinc-300"
+                          severityBadge[alert.severity] || "bg-slate-200 text-slate-700 dark:bg-zinc-700 dark:text-zinc-300"
                         }`}
                       >
                         {alert.severity}
                       </span>
                     </div>
-                    <p className="text-[13px] leading-relaxed text-zinc-400">{alert.message}</p>
+                    <p className="text-[13px] leading-relaxed text-slate-600 dark:text-zinc-400">{alert.message}</p>
                     <button
                       type="button"
                       onClick={() => acknowledgeAlert(alert.id)}
-                      className="mt-1.5 text-xs font-medium text-zinc-500 transition-colors hover:text-teal-300"
+                      className="mt-1.5 text-xs font-medium text-slate-500 transition-colors hover:text-teal-600 dark:text-zinc-500 dark:hover:text-teal-300"
                     >
                       Acknowledge
                     </button>
