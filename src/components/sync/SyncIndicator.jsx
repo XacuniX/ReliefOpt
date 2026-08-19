@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useOffline } from "../../context/OfflineContext";
+import { useData } from "../../context/DataContext";
+import { getStatus } from "../../lib/sync";
 import PeerPanel from "./PeerPanel";
 import OfflineQueue from "./OfflineQueue";
 import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
@@ -7,24 +9,26 @@ import Dialog from "../ui/Dialog";
 
 export default function SyncIndicator() {
   const { isOffline } = useOffline();
+  const { pendingCount, lastSyncedAt, syncQueue, drainQueue } = useData();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("devices");
 
-  const status = isOffline ? "offline" : "online";
-  const queueCount = 3;
+  const status = getStatus(isOffline, pendingCount);
 
   const config = {
     online: {
       dot: "bg-green-500",
       icon: <Wifi className="h-3.5 w-3.5" />,
-      text: "Online – synced 2 min ago",
+      text: lastSyncedAt
+        ? `Online – synced ${formatTime(lastSyncedAt)}`
+        : "Online",
       textColor: "text-green-700 dark:text-green-400",
       iconBg: "bg-green-500/10",
     },
     pending: {
       dot: "bg-amber-500",
       icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      text: `Sync Pending – ${queueCount} changes queued`,
+      text: `Sync Pending – ${pendingCount} change${pendingCount !== 1 ? "s" : ""} queued`,
       textColor: "text-amber-700 dark:text-amber-400",
       iconBg: "bg-amber-500/10",
     },
@@ -72,9 +76,23 @@ export default function SyncIndicator() {
           </div>
 
           {activeTab === "devices" && <PeerPanel />}
-          {activeTab === "queue" && <OfflineQueue />}
+          {activeTab === "queue" && (
+            <OfflineQueue
+              queue={syncQueue}
+              onRetryAll={() => drainQueue()}
+              lastSyncedAt={lastSyncedAt}
+            />
+          )}
         </div>
       </Dialog>
     </>
   );
+}
+
+function formatTime(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
 }

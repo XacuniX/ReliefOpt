@@ -62,134 +62,7 @@ npm run dev          # opens http://localhost:5173
 
 ---
 
-## Day 0 — one-time setup (30 minutes, do this together)
 
-Before anyone starts their own tasks, **these two files must exist on `main`**. Whoever is
-free first creates them and pushes; the other two pull.
-
-### File 1: `src/lib/contracts.js` (new file)
-
-This is a documentation file. It defines the exact shape of every object the three of you
-pass around. No logic, just comments — but everybody codes against it.
-
-```js
-/**
- * SHARED DATA SHAPES — do not change without telling the whole team.
- */
-
-/**
- * @typedef {Object} UrgencyResult   // produced by NFT's src/lib/urgency.js
- * @property {number} totalScore     // 0-100
- * @property {"green"|"amber"|"red"} zone
- * @property {{label: string, value: string, points: number}[]} factors
- */
-
-/**
- * @typedef {Object} VoiceExtraction // produced by RKN's src/lib/extract.js
- * @property {string} transcript
- * @property {string} language       // "bn" | "en"
- * @property {string|null} location  // must match a key in mockData.cityCoords
- * @property {number|null} waterLevelFt
- * @property {number|null} peopleCount
- * @property {boolean} childrenPresent
- * @property {boolean} elderlyPresent
- * @property {number|null} daysWithoutFood
- */
-
-/**
- * @typedef {Object} SyncQueueEntry  // produced by RKN's src/lib/sync.js
- * @property {string} id
- * @property {string} actionType     // "ADD_REPORT" | "UPDATE_ITEM_QTY" | "MOVE_TASK" | ...
- * @property {Object} payload        // a real object, NOT a display string
- * @property {"Queued"|"Syncing"|"Failed"|"Done"} status
- * @property {string} timestamp      // ISO string
- */
-
-/**
- * @typedef {Object} BoxPlacement    // produced by NFT's src/lib/packing.js
- * @property {string} boxId
- * @property {string} name
- * @property {string} category
- * @property {number} x  @property {number} y  @property {number} z   // cm, corner position
- * @property {number} w  @property {number} h  @property {number} d   // cm, size
- */
-
-export {};
-```
-
-### File 2: `src/context/DataContext.jsx` (new file)
-
-Create it with a **plain in-memory version** that already exposes the final API. YSR will
-later replace the insides with a real database — **without changing any of these function
-names or their arguments.**
-
-```jsx
-import { createContext, useContext, useState } from "react";
-import * as mock from "../mockData";
-
-const DataContext = createContext(null);
-
-export function DataProvider({ children }) {
-  const [reports, setReports] = useState(mock.reports);
-  const [tasks, setTasks] = useState(mock.tasks);
-  const [inventory, setInventory] = useState(mock.inventory);
-  const [notifications, setNotifications] = useState(mock.notifications);
-  const [stockLog, setStockLog] = useState([]);
-  const [mapPins, setMapPins] = useState([]);
-  const [syncQueue, setSyncQueue] = useState([]);
-
-  const value = {
-    ready: true,
-    reports, tasks, inventory, notifications, stockLog, mapPins, syncQueue,
-    users: mock.users, teams: mock.teams, warehouses: [],
-
-    addReport:      (r) => setReports((p) => [r, ...p]),
-    updateReport:   (id, patch) => setReports((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r)),
-    addTask:        (t) => setTasks((p) => [t, ...p]),
-    updateTask:     (id, patch) => setTasks((p) => p.map((t) => t.id === id ? { ...t, ...patch } : t)),
-    updateItemQty:  (id, delta, reason, userName) => {
-      setInventory((p) => p.map((i) => i.id === id ? { ...i, qty: i.qty + delta } : i));
-      setStockLog((p) => [{ id: crypto.randomUUID(), itemId: id, change: delta, reason, user: userName, timestamp: new Date().toISOString() }, ...p]);
-    },
-    markNotificationRead: (id) => setNotifications((p) => p.map((n) => n.id === id ? { ...n, read: !n.read } : n)),
-    addMapPin:      (pin) => setMapPins((p) => [pin, ...p]),
-
-    // sync queue — RKN uses these, YSR makes them persist
-    enqueueSync:    (entry) => setSyncQueue((p) => [...p, entry]),
-    updateSyncEntry:(id, patch) => setSyncQueue((p) => p.map((e) => e.id === id ? { ...e, ...patch } : e)),
-    clearSyncEntry: (id) => setSyncQueue((p) => p.filter((e) => e.id !== id)),
-    applyRemoteChange: (entry) => { /* YSR fills this in; RKN calls it for incoming P2P data */ },
-  };
-
-  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
-}
-
-export function useData() {
-  const ctx = useContext(DataContext);
-  if (!ctx) throw new Error("useData must be used inside <DataProvider>");
-  return ctx;
-}
-```
-
-Then wrap the app once, in `src/App.jsx`, inside `<OfflineProvider>`:
-
-```jsx
-<OfflineProvider>
-  <DataProvider>
-    <AuthRoutes />
-  </DataProvider>
-</OfflineProvider>
-```
-
-**Day 0 checklist**
-- [ ] `src/lib/contracts.js` exists on `main`
-- [ ] `src/context/DataContext.jsx` exists on `main`
-- [ ] `<DataProvider>` wraps the app in `src/App.jsx`
-- [ ] `npm run dev` still loads every page with no console errors
-- [ ] All three members have pulled `main` and branched off it
-
----
----
 
 # 👤 RKN 
 
@@ -331,9 +204,7 @@ export function extractFields(rawTranscript) { /* ... */ }
 Rules to implement:
 - `waterLevelFt` → the number that appears **nearest to** a `water` or `feet` keyword.
 - `peopleCount` → the number nearest a `people` keyword.
-- `childrenPresent` / `elderlyPresent` → `true` if any of those keywords appear at all.
-- `daysWithoutFood` → the number nearest a `days` keyword **when** a `food` keyword is
-  also in the sentence.
+- `childrenPresent` / `elderlyPresent` → `true` if any of those keywords appear2
 - `location` → check the sentence against every key of `cityCoords` in `src/mockData.js`
   (case-insensitive). Return `null` if nothing matches — **do not guess**.
 - Anything you cannot find must be `null`, never `0`. `0` means "confirmed zero".
@@ -357,7 +228,7 @@ On `done`, show the **editable** transcript and the extracted fields, then on co
 3. Set `report.urgencyScore` using NFT's `calculateUrgency()` from `src/lib/urgency.js`.
    **If NFT hasn't finished yet, just use `0` and add a `// TODO` comment** — swap it in
    later. Do not wait for them.
-
+s
 ### ✅ Task R1 checklist
 
 - [ ] `npm install @huggingface/transformers` done and committed to `package.json`

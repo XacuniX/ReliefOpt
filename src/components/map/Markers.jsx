@@ -31,7 +31,7 @@ const severityColors = {
   5: { fill: "rgba(239,68,68,0.55)", stroke: "#ef4444" },
 };
 
-export default function Markers({ filters, voicePins }) {
+export default function Markers({ filters, mapPins }) {
   const severityRadius = { 1: 1000, 2: 2000, 3: 4000, 4: 6000, 5: 10000 };
 
   return (
@@ -130,7 +130,7 @@ export default function Markers({ filters, voicePins }) {
             );
           })}
 
-      {voicePins.map((pin, i) => (
+      {mapPins.map((pin, i) => (
         <Marker
           key={`voice-${i}`}
           position={pin.position}
