@@ -1,4 +1,6 @@
 # General Preferences
+- Prefers the agent to run tasks autonomously without repeatedly asking for permission — explicitly frustrated when the agent kept pausing for approval ("you kept asking my permission, i want it to be done autonomously"); will pick auto-accept options when available and invokes `cmd --yolo` to force fully autonomous runs with no prompts. Confidence: 0.95
+- Prefers to unblock the agent by handling steps the agent struggled with (e.g., installing a dependency like `@huggingface/transformers`) themselves rather than have the agent keep retrying. Confidence: 0.6
 - Prefers login/authentication page as the default entry point (e.g., `/` and `*` routes redirect to login, not dashboard). Confidence: 0.8
 - Communicates casually and briefly — informal affirmatives ("yea"), minimal explanations, typos are fine. No need for formalities. Confidence: 0.7
 - Prefers point-form/bullet-style presentation scripts and documentation — not word-for-word prose. Relaxed grammar is explicitly acceptable in demo scripts. Confidence: 0.85
@@ -9,8 +11,13 @@
 - Prefers tables to visually stand out from the page background — alternating row colors (zebra striping) or other differentiation so rows don't blend into the surrounding surface. Confidence: 0.7
 - Prefers dark mode palettes that feel professional and industry-relevant — not generic or overly playful. Confidence: 0.6
 - Prefers pasted task specs/code to be implemented faithfully as given — exact code, function names, and arguments preserved rather than adapted or "improved." Confidence: 0.7
-- Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"). Confidence: 0.8
+- Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"); follows up to confirm checklist verification happened ("did you verify it with the R1 Checklist I provided?") and expects an item-by-item status rather than a blanket "done". Confidence: 0.9
+- Values honest reporting of what could and could not be verified — expects the agent to explicitly separate "code-verified" items from "needs a real browser/mic" items instead of claiming full completion. Confidence: 0.7
 - Prefers to receive commit messages as ready-to-paste text rather than having the agent run the git commit itself — wants to control when commits happen ("dont do a commit yourself, just make me the message", "just suggest"). Confidence: 0.85
 - Prefers one-line commit messages — a single-line subject with no body, trailers, or extra detail ("one liner commit message"). Confidence: 0.8
 - Prefers pasted task specs/code to be implemented faithfully as given — exact code, function names, and arguments preserved rather than adapted or "improved." Confidence: 0.7
 - Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"). Confidence: 0.8
+- Prefers dialogs/modals to be non-dismissible during in-progress states (recording, transcribing, unsaved/unedited results) — backdrop clicks, Escape, and the close button must not be able to close them and lose work; persistence can lift once the state is safe to abandon. Confidence: 0.8
+- Prefers progress/loading percentages displayed as whole numbers only — no decimal points (e.g., `Math.floor(progress)`). Confidence: 0.75
+- Prefers user-initiated actions (e.g., audio recording) to run indefinitely until the user stops them, rather than being auto-capped by an arbitrary time limit. Confidence: 0.6
+- Prefers auto-extracted data (e.g., speech-to-text field extraction) to be user-editable — fields should render as editable controls (dropdowns, number inputs, checkboxes) so the user can click and correct anything the extraction got wrong, rather than presenting read-only results. Confidence: 0.7
