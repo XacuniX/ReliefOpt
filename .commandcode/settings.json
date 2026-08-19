@@ -15,7 +15,9 @@
       "Shell(node \"C:\\Users\\XacuniX\\AppData\\Local\\Temp\\commandcode\\E--Coding-CSE327-ReliefOpt\\9f493c65-743a-4472-a7ac-3e87e0e182c0\\scratchpad\\extract-test.mjs\")",
       "Shell(node -e \"fetch('http://localhost:5173/').then(r => r.text()).then(t => console.log('dev server OK, html length:', t.length)).catch(e => console.log('ERR', e.message))\")",
       "Shell(node -e \" const paths = [ '/src/lib/extract.js', '/src/lib/speech.js', '/src/components/map/VoiceReportModal.jsx', '/src/pages/MapPage.jsx', '/src/components/map/Markers.jsx', ]; (async () => { for (const p of paths) { try { const res = await fetch('http://localhost:5173' + p); const text = await res.text(); const ok = res.ok && !text.includes('Internal Server Error') && !text.startsWith('<pre>'); console.log(ok ? 'OK ' : 'FAIL', p, res.status, text.length); if (!ok) console.log(text.slice(0, 300)); } catch (e) { console.log('ERR ', p, e.message); } } })(); \")",
-      "Shell(node \"C:\\Users\\XacuniX\\AppData\\Local\\Temp\\commandcode\\E--Coding-CSE327-ReliefOpt\\9f493c65-743a-4472-a7ac-3e87e0e182c0\\scratchpad\\vite-module-check.mjs\")"
+      "Shell(node \"C:\\Users\\XacuniX\\AppData\\Local\\Temp\\commandcode\\E--Coding-CSE327-ReliefOpt\\9f493c65-743a-4472-a7ac-3e87e0e182c0\\scratchpad\\vite-module-check.mjs\")",
+      "Shell(node -e \"console.log('RTCPeerConnection' in globalThis ? 'yes' : 'no')\")",
+      "Shell(node \"C:\\Users\\XacuniX\\AppData\\Local\\Temp\\commandcode\\E--Coding-CSE327-ReliefOpt\\9f493c65-743a-4472-a7ac-3e87e0e182c0\\scratchpad\\vite-r2-check.mjs\")"
     ],
     "deny": [],
     "defaultMode": "default"

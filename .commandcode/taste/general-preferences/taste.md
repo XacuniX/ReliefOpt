@@ -10,8 +10,8 @@
 - Values eye-friendly, comfortable color schemes — light mode should avoid harsh/sterile whites and use softer tones. Confidence: 0.6
 - Prefers tables to visually stand out from the page background — alternating row colors (zebra striping) or other differentiation so rows don't blend into the surrounding surface. Confidence: 0.7
 - Prefers dark mode palettes that feel professional and industry-relevant — not generic or overly playful. Confidence: 0.6
-- Prefers pasted task specs/code to be implemented faithfully as given — exact code, function names, and arguments preserved rather than adapted or "improved." Confidence: 0.7
-- Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"); follows up to confirm checklist verification happened ("did you verify it with the R1 Checklist I provided?") and expects an item-by-item status rather than a blanket "done". Confidence: 0.9
+- Prefers pasted task specs/code to be implemented faithfully as given — exact code, function names, and arguments preserved rather than adapted or "improved." Confidence: 0.8
+- Wants completed work verified against the provided checklist before reporting done ("Theres a checklist to follow after ur done to verify your output"); follows up to confirm checklist verification happened ("did you verify it with the R1 Checklist I provided?", "Did it pass R2 Checklist") and expects an item-by-item status rather than a blanket "done". Confidence: 0.95
 - Values honest reporting of what could and could not be verified — expects the agent to explicitly separate "code-verified" items from "needs a real browser/mic" items instead of claiming full completion. Confidence: 0.7
 - Prefers to receive commit messages as ready-to-paste text rather than having the agent run the git commit itself — wants to control when commits happen ("dont do a commit yourself, just make me the message", "just suggest"). Confidence: 0.85
 - Prefers one-line commit messages — a single-line subject with no body, trailers, or extra detail ("one liner commit message"). Confidence: 0.8
@@ -21,3 +21,4 @@
 - Prefers progress/loading percentages displayed as whole numbers only — no decimal points (e.g., `Math.floor(progress)`). Confidence: 0.75
 - Prefers user-initiated actions (e.g., audio recording) to run indefinitely until the user stops them, rather than being auto-capped by an arbitrary time limit. Confidence: 0.6
 - Prefers auto-extracted data (e.g., speech-to-text field extraction) to be user-editable — fields should render as editable controls (dropdowns, number inputs, checkboxes) so the user can click and correct anything the extraction got wrong, rather than presenting read-only results. Confidence: 0.7
+- Prefers the agent to proceed without waiting on teammates or unimplemented dependencies — wire against stubs/empty functions (e.g., a teammate's `applyRemoteChange` that is still an empty function) so the feature starts working the moment the dependency lands; the spec explicitly said "that is fine, it will start working the moment they finish. Do not wait for them." Confidence: 0.6
