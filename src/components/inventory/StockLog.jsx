@@ -27,7 +27,7 @@ export default function StockLog() {
       <Card className="mt-4 p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[760px]">
-            <div className="grid grid-cols-[150px_minmax(180px,1fr)_80px_120px_minmax(130px,0.7fr)] gap-4 px-4 py-3 bg-muted/50 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            <div className="grid grid-cols-[150px_minmax(180px,1fr)_80px_120px_minmax(130px,0.7fr)] gap-4 px-4 py-3 bg-slate-100 dark:bg-slate-800/60 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               <span>Timestamp</span>
               <span>Item</span>
               <span>Change</span>
@@ -37,14 +37,14 @@ export default function StockLog() {
             {filteredLogs.map((log) => {
               const positive = log.change > 0;
               return (
-                <div key={log.id} className="grid grid-cols-[150px_minmax(180px,1fr)_80px_120px_minmax(130px,0.7fr)] gap-4 px-4 py-3 border-t border-border text-sm items-center hover:bg-muted/30 transition-colors">
-                  <span>{new Date(log.timestamp).toLocaleString()}</span>
-                  <strong>{log.itemName}</strong>
+                <div key={log.id} className="grid grid-cols-[150px_minmax(180px,1fr)_80px_120px_minmax(130px,0.7fr)] gap-4 px-4 py-3 border-t border-slate-200 dark:border-border text-sm items-center hover:bg-slate-100/70 dark:hover:bg-muted/30 transition-colors">
+                  <span className="text-slate-700 dark:text-slate-300">{new Date(log.timestamp).toLocaleString()}</span>
+                  <strong className="text-slate-900 dark:text-slate-300">{log.itemName}</strong>
                   <span className={`font-bold ${positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
                     {positive ? "+" : ""}{log.change}
                   </span>
                   <span><Badge color={reasonColors[log.reason]} text={log.reason} /></span>
-                  <span>{log.user}</span>
+                  <span className="text-slate-700 dark:text-slate-300">{log.user}</span>
                 </div>
               );
             })}

@@ -28,7 +28,7 @@ export default function AlertFeed() {
             const borderColor = severityStyles[alert.severity] || "border-border";
 
             return (
-              <div key={alert.id} className={`border-l-[3px] ${borderColor} bg-card rounded-r-md p-3`}>
+              <div key={alert.id} className={`border-l-[3px] ${borderColor} bg-slate-50/80 dark:bg-white/5 rounded-r-md p-3`}>
                 <div className="flex items-center flex-wrap gap-2 mb-1">
                   <span className="text-sm font-semibold text-primary">{alert.location}</span>
                   <span className="text-xs text-muted-foreground">

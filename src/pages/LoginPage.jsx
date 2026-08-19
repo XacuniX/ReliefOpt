@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Button, Input, Card } from "../components/ui";
+import { useTheme } from "../context/ThemeContext";
+import { LoginForm, SmokeyBackground } from "../components/ui/login-form";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
-    e.preventDefault();
+  function handleSubmit({ username, password }) {
     if (!username.trim() || !password.trim()) {
       setError("Enter your username and password.");
       return;
@@ -31,38 +31,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 px-4">
-      <Card className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-extrabold text-foreground text-center mb-6">
-          Relief<span className="text-primary">Opt</span>
-        </h1>
-        <form onSubmit={handleSubmit}>
-          <Input
-            label="Username"
-            placeholder="Enter your username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <Button type="submit" loading={loading} className="w-full mt-2">
-            Sign In
-          </Button>
-          {error && (
-            <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-400 text-center" role="alert">
-              {error}
-            </p>
-          )}
-        </form>
-        <div className="mt-5 p-3 bg-amber-500/10 border border-amber-500/30 rounded-md text-sm text-amber-600 dark:text-amber-400 text-center font-medium">
+    <div className="app-gradient relative min-h-screen flex items-center justify-center overflow-hidden px-4">
+      <div aria-hidden className="glow-blob right-[-10rem] top-[-10rem] h-96 w-96 bg-teal-500/10" />
+      <div aria-hidden className="glow-blob bottom-[-12rem] left-[-8rem] h-[28rem] w-[28rem] bg-teal-500/5" />
+      <SmokeyBackground color="#0d9488" />
+      <div aria-hidden className={`absolute inset-0 ${isDark ? "bg-[#031a17]/80" : "bg-white/60"}`} />
+      <div className="relative z-10 w-full flex flex-col items-center">
+        <LoginForm onSubmit={handleSubmit} error={error} loading={loading} />
+        <div className="mt-5 p-3 rounded-md text-sm text-slate-700 dark:text-gray-300 text-center font-medium bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30">
           Offline Mode Available — data will sync when connected
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

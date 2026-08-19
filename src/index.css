@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -46,39 +48,39 @@
   --destructive-foreground: #ffffff;
   --border: #e0e4ea;
   --ring: #0d9488;
-  --sidebar: #1e293b;
-  --sidebar-foreground: #f1f5f9;
-  --sidebar-accent: rgba(13, 148, 136, 0.18);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1f2937;
+  --sidebar-accent: rgba(13, 148, 136, 0.12);
+  --sidebar-accent-foreground: #0d9488;
+  --sidebar-border: #e0e4ea;
   --success: #16a34a;
   --warning: #d97706;
   --info: #0369a1;
 }
 
 .dark {
-  --background: #0a0f1a;
+  --background: #0a0f0d;
   --foreground: #e4e8f0;
-  --card: #111827;
+  --card: #0d1317;
   --card-foreground: #e4e8f0;
-  --primary: #2dd4bf;
+  --primary: #14b8a6;
   --primary-foreground: #042f2e;
-  --secondary: #1a2332;
+  --secondary: #111c1f;
   --secondary-foreground: #e4e8f0;
-  --muted: #1a2332;
-  --muted-foreground: #8895a9;
-  --accent: #1a2332;
-  --accent-foreground: #e4e8f0;
+  --muted: #111c1f;
+  --muted-foreground: #94a3b8;
+  --accent: #0f2624;
+  --accent-foreground: #5eead4;
   --destructive: #f75555;
   --destructive-foreground: #ffffff;
-  --border: #1f2a3d;
-  --ring: #2dd4bf;
-  --sidebar: #070b14;
+  --border: #1c2a2e;
+  --ring: #14b8a6;
+  --sidebar: #0b1215;
   --sidebar-foreground: #e4e8f0;
-  --sidebar-accent: rgba(45, 212, 191, 0.15);
-  --sidebar-accent-foreground: #2dd4bf;
-  --sidebar-border: rgba(45, 212, 191, 0.08);
-  --success: #22c55e;
+  --sidebar-accent: rgba(20, 184, 166, 0.16);
+  --sidebar-accent-foreground: #5eead4;
+  --sidebar-border: rgba(20, 184, 166, 0.12);
+  --success: #10b981;
   --warning: #f59e0b;
   --info: #38bdf8;
 }
@@ -127,4 +129,50 @@ body {
 
 .leaflet-default-icon-path {
   background-image: url("https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png");
+}
+
+/* Glass card surface — frosted, teal-tinted, elevated */
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(13, 148, 136, 0.18);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+}
+
+.dark .glass-card {
+  background: rgba(13, 19, 23, 0.8);
+  border: 1px solid rgba(20, 184, 166, 0.16);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+/* Ambient teal glow blobs for the app background */
+.glow-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+  pointer-events: none;
+}
+
+/* App-wide gradient backdrop — light by default, dark in .dark */
+.app-gradient {
+  background:
+    radial-gradient(ellipse at top right, rgba(13, 148, 136, 0.18), transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(13, 148, 136, 0.06), transparent 45%),
+    linear-gradient(135deg, #f8f9fb 0%, #eef2f7 55%, #e6f4f2 100%);
+}
+
+.dark .app-gradient {
+  background:
+    radial-gradient(ellipse at top right, rgba(0, 56, 50, 0.35), transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(20, 184, 166, 0.08), transparent 45%),
+    linear-gradient(135deg, #0a0f0d 0%, #111827 55%, #041e1a 100%);
+}
+
+/* Teal gradient border for sidebar/header edges */
+.teal-edge {
+  border-color: transparent;
+  background-image: linear-gradient(to bottom, rgba(20, 184, 166, 0.35), rgba(20, 184, 166, 0.05) 60%, transparent);
+  background-origin: border-box;
+  background-clip: border-box;
 }

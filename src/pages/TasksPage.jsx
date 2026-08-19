@@ -7,7 +7,7 @@ import MyTasksList from "../components/tasks/MyTasksList";
 
 const statuses = ["To Do", "In Progress", "En Route", "Completed"];
 const priorityColors = { Critical: "red", High: "orange", Medium: "teal", Low: "grey" };
-const columnBg = { "To Do": "bg-blue-50/50 dark:bg-blue-950/20", "In Progress": "bg-amber-50/50 dark:bg-amber-950/20", "En Route": "bg-purple-50/50 dark:bg-purple-950/20", Completed: "bg-emerald-50/50 dark:bg-emerald-950/20" };
+const columnBg = { "To Do": "bg-teal-50/50 dark:bg-blue-950/20", "In Progress": "bg-amber-50/50 dark:bg-amber-950/20", "En Route": "bg-purple-50/50 dark:bg-purple-950/20", Completed: "bg-emerald-50/50 dark:bg-emerald-950/20" };
 
 function teamFor(users, assignee) {
   return users.find((user) => user.name === assignee)?.team || assignee || "Unassigned team";

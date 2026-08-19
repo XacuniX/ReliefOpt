@@ -36,7 +36,7 @@ export default function Sheet({ isOpen, onClose, side = "right", children }) {
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
       <aside
         className={cn(
-          "fixed z-50 bg-card border-l shadow-xl flex flex-col",
+          "fixed z-50 shadow-2xl flex flex-col border-l border-teal-500/20 dark:border-white/20 bg-white/90 dark:bg-white/10 backdrop-blur-lg",
           positions[side] || positions.right
         )}
       >
