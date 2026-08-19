@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getAll, put, remove, seedOnce } from "../lib/db";
+import { makeEntry, drainQueue } from "../lib/sync";
 
 const DataContext = createContext(null);
 
@@ -43,6 +44,7 @@ function writeShadow(state) {
 
 export function DataProvider({ children }) {
   const [ready, setReady] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [state, setState] = useState({
     reports: [],
     tasks: [],
@@ -110,6 +112,105 @@ export function DataProvider({ children }) {
     }
   }
 
+  // ── Offline queue (Task R3) ──────────────────────────────────────────────
+  // Offline changes are captured as replayable entries instead of being lost,
+  // then re-applied automatically when the network returns.
+
+  function enqueueSync(actionType, payload) {
+    const entry = makeEntry(actionType, payload);
+    updateStore("syncQueue", (p) => [...p, entry]);
+    return entry;
+  }
+
+  // Offline-aware write: when there is no network the change becomes a queued
+  // entry (replayed later by drainNow) instead of being applied directly.
+  function commit(actionType, payload, writeFn) {
+    if (navigator.onLine === false) {
+      enqueueSync(actionType, payload);
+      return;
+    }
+    writeFn();
+  }
+
+  // Applies a sync entry (from P2P or the offline queue) to local state.
+  // Entry shape (see contracts.js): { id, actionType, payload, status, timestamp }
+  // actionTypes: ADD_REPORT | ADD_TASK | MOVE_TASK | UPDATE_ITEM_QTY | ADD_MAP_PIN ...
+  function applyRemoteChange(entry) {
+    const payload = entry?.payload ?? entry;
+    switch (entry?.actionType) {
+      case "ADD_REPORT":
+        if (payload?.id) updateStore("reports", (p) => [payload, ...p]);
+        break;
+      case "ADD_TASK":
+        if (payload?.id) updateStore("tasks", (p) => [payload, ...p]);
+        break;
+      case "MOVE_TASK":
+        if (payload?.id && payload?.status) {
+          updateStore("tasks", (p) =>
+            p.map((t) => (t.id === payload.id ? { ...t, status: payload.status } : t))
+          );
+        }
+        break;
+      case "UPDATE_ITEM_QTY":
+        if (payload?.itemId && typeof payload?.delta === "number") {
+          updateStore("inventory", (p) =>
+            p.map((i) => (i.id === payload.itemId ? { ...i, qty: i.qty + payload.delta } : i))
+          );
+          const item = state.inventory.find((i) => i.id === payload.itemId);
+          updateStore("stockLog", (p) => [
+            {
+              id: crypto.randomUUID(),
+              itemId: payload.itemId,
+              itemName: item?.name,
+              change: payload.delta,
+              reason: payload.reason || "Sync",
+              user: payload.userName || "Remote",
+              timestamp: new Date().toISOString(),
+            },
+            ...p,
+          ]);
+        }
+        break;
+      case "ADD_MAP_PIN":
+        if (payload?.id) updateStore("mapPins", (p) => [payload, ...p]);
+        break;
+      default:
+        // Unknown action — drop it silently rather than corrupting state.
+        break;
+    }
+  }
+
+  async function drainNow() {
+    const queue = state.syncQueue.filter((e) => e.status !== "Done");
+    if (queue.length === 0) return;
+    const { applied } = await drainQueue(
+      queue,
+      async (entry) => {
+        applyRemoteChange(entry);
+        // Wait a microtask so updateStore's setState is processed.
+        await Promise.resolve();
+      },
+      (id, patch) => updateSyncEntry(id, patch)
+    );
+    if (applied > 0) setLastSyncedAt(new Date().toISOString());
+  }
+
+  // When the browser comes back online, drain automatically.
+  useEffect(() => {
+    const handler = () => {
+      if (navigator.onLine) drainNow();
+    };
+    window.addEventListener("online", handler);
+    return () => window.removeEventListener("online", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.syncQueue]);
+
+  // Drain once after hydration so a refresh mid-queue still replays.
+  useEffect(() => {
+    if (ready) drainNow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
+
   function updateStore(store, updater) {
     setState((prev) => {
       const next = updater(prev[store]);
@@ -170,13 +271,25 @@ export function DataProvider({ children }) {
     stockLog: state.stockLog,
     mapPins: state.mapPins,
     syncQueue: state.syncQueue,
+    pendingCount: state.syncQueue.filter((e) => e.status !== "Done").length,
+    lastSyncedAt,
 
-    addReport: (r) => updateStore("reports", (p) => [r, ...p]),
+    addReport: (r) =>
+      commit("ADD_REPORT", r, () => updateStore("reports", (p) => [r, ...p])),
     updateReport: (id, patch) =>
-      updateStore("reports", (p) => p.map((r) => (r.id === id ? { ...r, ...patch } : r))),
-    addTask: (t) => updateStore("tasks", (p) => [t, ...p]),
+      commit(
+        "UPDATE_REPORT",
+        { id, patch },
+        () => updateStore("reports", (p) => p.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+      ),
+    addTask: (t) =>
+      commit("ADD_TASK", t, () => updateStore("tasks", (p) => [t, ...p])),
     updateTask: (id, patch) =>
-      updateStore("tasks", (p) => p.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+      commit(
+        "MOVE_TASK",
+        { id, status: patch.status },
+        () => updateStore("tasks", (p) => p.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+      ),
     addItem: (item) => updateStore("inventory", (p) => [item, ...p]),
     updateItem: (id, patch) =>
       updateStore("inventory", (p) => p.map((i) => (i.id === id ? { ...i, ...patch } : i))),
@@ -202,69 +315,27 @@ export function DataProvider({ children }) {
       // Enrich with the item name so StockLog can display and search it.
       const item = state.inventory.find((i) => i.id === id);
       if (item) entry.itemName = item.name;
-      updateStore("inventory", (p) =>
-        p.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i))
-      );
-      updateStore("stockLog", (p) => [entry, ...p]);
+      commit("UPDATE_ITEM_QTY", { itemId: id, delta, reason, userName }, () => {
+        updateStore("inventory", (p) =>
+          p.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i))
+        );
+        updateStore("stockLog", (p) => [entry, ...p]);
+      });
     },
     markNotificationRead: (id) =>
       updateStore("notifications", (p) =>
         p.map((n) => (n.id === id ? { ...n, read: !n.read } : n))
       ),
-    addMapPin: (pin) => updateStore("mapPins", (p) => [pin, ...p]),
+    addMapPin: (pin) =>
+      commit("ADD_MAP_PIN", pin, () => updateStore("mapPins", (p) => [pin, ...p])),
 
     // sync queue — RKN uses these, YSR makes them persist
     enqueueSync: (entry) => updateStore("syncQueue", (p) => [...p, entry]),
     updateSyncEntry: (id, patch) =>
       updateStore("syncQueue", (p) => p.map((e) => (e.id === id ? { ...e, ...patch } : e))),
     clearSyncEntry: (id) => updateStore("syncQueue", (p) => p.filter((e) => e.id !== id)),
-    applyRemoteChange: (entry) => {
-      // RKN calls this with incoming peer data. Entry shape (see contracts.js):
-      //   { id, actionType, payload, status, timestamp }
-      // actionTypes: ADD_REPORT | ADD_TASK | MOVE_TASK | UPDATE_ITEM_QTY | ADD_MAP_PIN ...
-      const payload = entry?.payload ?? entry;
-      switch (entry?.actionType) {
-        case "ADD_REPORT":
-          if (payload?.id) updateStore("reports", (p) => [payload, ...p]);
-          break;
-        case "ADD_TASK":
-          if (payload?.id) updateStore("tasks", (p) => [payload, ...p]);
-          break;
-        case "MOVE_TASK":
-          if (payload?.id && payload?.status) {
-            updateStore("tasks", (p) =>
-              p.map((t) => (t.id === payload.id ? { ...t, status: payload.status } : t))
-            );
-          }
-          break;
-        case "UPDATE_ITEM_QTY":
-          if (payload?.itemId && typeof payload?.delta === "number") {
-            updateStore("inventory", (p) =>
-              p.map((i) => (i.id === payload.itemId ? { ...i, qty: i.qty + payload.delta } : i))
-            );
-            const item = state.inventory.find((i) => i.id === payload.itemId);
-            updateStore("stockLog", (p) => [
-              {
-                id: crypto.randomUUID(),
-                itemId: payload.itemId,
-                itemName: item?.name,
-                change: payload.delta,
-                reason: payload.reason || "Sync",
-                user: payload.userName || "Remote",
-                timestamp: new Date().toISOString(),
-              },
-              ...p,
-            ]);
-          }
-          break;
-        case "ADD_MAP_PIN":
-          if (payload?.id) updateStore("mapPins", (p) => [payload, ...p]);
-          break;
-        default:
-          // Unknown action — drop it silently rather than corrupting state.
-          break;
-      }
-    },
+    drainQueue: () => drainNow(),
+    applyRemoteChange,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
