@@ -45,7 +45,9 @@ export default function ThemeProvider({ children }) {
     setThemeState(value);
     try {
       localStorage.setItem(STORAGE_KEY, value);
-    } catch {}
+    } catch {
+      // Theme still applies for this page when storage is unavailable.
+    }
     if (value !== "system") {
       applyTheme(value);
     } else {

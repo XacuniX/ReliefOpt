@@ -1,325 +1,277 @@
-// Real WebRTC peer-to-peer with no signalling server.
-//
-// Two ways to swap the SDP handshake:
-//   - Mode A (same device, two tabs): BroadcastChannel, fully automatic.
-//   - Mode B (two devices): the offer/answer text is copied and pasted by hand.
-//
-// The connection and data transfer are genuinely peer-to-peer in both modes;
-// only the initial handshake is manual/automatic-on-one-machine.
-
-// No STUN/TURN servers: we only care about the local network.
 const RTC_CONFIG = { iceServers: [] };
-
 const CHANNEL_NAME = "reliefopt";
 const SIGNAL_CHANNEL_NAME = "reliefopt-p2p-signal";
-
-// Data channels die silently if a single send exceeds ~64 KB.
 const CHUNK_SIZE = 16 * 1024;
 const CHUNK_PREFIX = "__reliefopt_chunk__";
 const CHUNK_ACK_PREFIX = "__reliefopt_chunk_ack__";
+const SIGNAL_STORAGE_KEY = "reliefopt-p2p-signal-event";
 
-/**
- * Waits for the peer connection's ICE gathering to finish. Sending an offer
- * before this completes silently breaks the connection.
- */
-function waitForIceGatheringComplete(pc) {
-  return new Promise((resolve) => {
-    if (pc.iceGatheringState === "complete") {
-      resolve();
-      return;
-    }
-    const handler = () => {
-      if (pc.iceGatheringState === "complete") {
-        pc.removeEventListener("icegatheringstatechange", handler);
-        resolve();
+function createSignalChannel() {
+  const broadcast = new BroadcastChannel(SIGNAL_CHANNEL_NAME);
+  const channel = {
+    onmessage: null,
+    postMessage(data) {
+      broadcast.postMessage(data);
+      try {
+        localStorage.setItem(SIGNAL_STORAGE_KEY, JSON.stringify({ id: crypto.randomUUID(), data }));
+      } catch {
+        // BroadcastChannel remains the primary transport when storage is unavailable.
       }
+    },
+    close() {
+      broadcast.close();
+      window.removeEventListener("storage", handleStorage);
+    },
+  };
+  broadcast.onmessage = (event) => channel.onmessage?.(event);
+  function handleStorage(event) {
+    if (event.key !== SIGNAL_STORAGE_KEY || !event.newValue) return;
+    try {
+      channel.onmessage?.({ data: JSON.parse(event.newValue).data });
+    } catch {
+      // Ignore malformed or unrelated storage events.
+    }
+  }
+  window.addEventListener("storage", handleStorage);
+  return channel;
+}
+
+function waitForIceGatheringComplete(peer) {
+  /** @type {Promise<void>} */
+  return new Promise((resolve) => {
+    if (peer.iceGatheringState === "complete") return resolve();
+    const timeout = setTimeout(() => {
+      peer.removeEventListener("icegatheringstatechange", handler);
+      resolve();
+    }, 10000);
+    const handler = () => {
+      if (peer.iceGatheringState !== "complete") return;
+      clearTimeout(timeout);
+      peer.removeEventListener("icegatheringstatechange", handler);
+      resolve();
     };
-    pc.addEventListener("icegatheringstatechange", handler);
+    peer.addEventListener("icegatheringstatechange", handler);
   });
 }
 
 function reportState(onStateChange, patch) {
-  onStateChange?.((prev) => ({ ...prev, ...patch }));
+  onStateChange?.(patch);
 }
 
-/**
- * Builds a host peer connection that owns the data channel.
- * Returns a controller: { getStatus, send, disconnect } plus a helper to grab
- * the offer. state changes flow through onStateChange.
- */
-export function createHost(onMessage, onStateChange) {
-  const pc = new RTCPeerConnection(RTC_CONFIG);
-  const channel = pc.createDataChannel(CHANNEL_NAME, { ordered: true });
-  const chunks = new Map(); // chunkId -> { parts: Map, size }
-  const pendingAcks = new Map(); // chunkId -> resolve fn
-  let status = "connecting";
+/** Testable, bounded large-message protocol layered on an RTCDataChannel. */
+export function createChunkTransport(channel, onMessage, {
+  chunkSize = CHUNK_SIZE,
+  ackTimeoutMs = 5000,
+  maxIncompleteMessages = 32,
+} = {}) {
+  const incomplete = new Map();
+  const pendingAcks = new Map();
 
-  function setStatus(next) {
-    status = next;
-    reportState(onStateChange, { status });
+  function acknowledge(id, index) {
+    if (channel.readyState === "open") {
+      channel.send(`${CHUNK_ACK_PREFIX}${JSON.stringify({ id, index })}`);
+    }
   }
 
+  function handleMessage(event) {
+    const raw = String(event.data);
+    try {
+      if (raw.startsWith(CHUNK_ACK_PREFIX)) {
+        const { id, index } = JSON.parse(raw.slice(CHUNK_ACK_PREFIX.length));
+        const key = `${id}:${index}`;
+        const pending = pendingAcks.get(key);
+        if (pending) {
+          clearTimeout(pending.timer);
+          pending.resolve();
+          pendingAcks.delete(key);
+        }
+        return;
+      }
+      if (raw.startsWith(CHUNK_PREFIX)) {
+        const frame = JSON.parse(raw.slice(CHUNK_PREFIX.length));
+        if (!frame?.id || !Number.isInteger(frame.index) || !Number.isInteger(frame.total)
+          || frame.index < 0 || frame.total < 1 || frame.index >= frame.total
+          || typeof frame.payload !== "string") return;
+        if (!incomplete.has(frame.id) && incomplete.size >= maxIncompleteMessages) {
+          incomplete.delete(incomplete.keys().next().value);
+        }
+        const entry = incomplete.get(frame.id) || { parts: new Map(), total: frame.total };
+        if (entry.total !== frame.total) return;
+        entry.parts.set(frame.index, frame.payload);
+        incomplete.set(frame.id, entry);
+        acknowledge(frame.id, frame.index);
+        if (entry.parts.size === entry.total) {
+          incomplete.delete(frame.id);
+          const text = Array.from({ length: entry.total }, (_, index) => entry.parts.get(index)).join("");
+          onMessage?.(JSON.parse(text));
+        }
+        return;
+      }
+      onMessage?.(JSON.parse(raw));
+    } catch {
+      // Malformed peer data is ignored without affecting the channel.
+    }
+  }
+
+  async function send(dataObject) {
+    if (channel.readyState !== "open") throw new Error("Channel is not open — cannot send.");
+    const serialized = JSON.stringify(dataObject);
+    if (serialized.length <= chunkSize) {
+      channel.send(serialized);
+      return;
+    }
+    const id = crypto.randomUUID();
+    const total = Math.ceil(serialized.length / chunkSize);
+    for (let index = 0; index < total; index += 1) {
+      const payload = serialized.slice(index * chunkSize, (index + 1) * chunkSize);
+      const key = `${id}:${index}`;
+      const acknowledgement = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          pendingAcks.delete(key);
+          reject(new Error(`Peer acknowledgement timed out for chunk ${index + 1}/${total}.`));
+        }, ackTimeoutMs);
+        pendingAcks.set(key, { resolve, reject, timer });
+      });
+      channel.send(`${CHUNK_PREFIX}${JSON.stringify({ id, index, total, payload })}`);
+      await acknowledgement;
+    }
+  }
+
+  function dispose() {
+    incomplete.clear();
+    for (const pending of pendingAcks.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error("Peer disconnected before transfer completed."));
+    }
+    pendingAcks.clear();
+  }
+
+  return { send, handleMessage, dispose };
+}
+
+export function createHost(onMessage, onStateChange) {
+  const peer = new RTCPeerConnection(RTC_CONFIG);
+  const channel = peer.createDataChannel(CHANNEL_NAME, { ordered: true });
+  const transport = createChunkTransport(channel, onMessage);
+  let status = "connecting";
+  const setStatus = (next) => { status = next; reportState(onStateChange, { status }); };
   channel.onopen = () => setStatus("connected");
   channel.onclose = () => setStatus("disconnected");
   channel.onerror = () => setStatus("disconnected");
+  channel.onmessage = transport.handleMessage;
 
-  channel.onmessage = (event) => {
-    const text = String(event.data);
-    if (text.startsWith(CHUNK_PREFIX)) {
-      handleChunk(text);
-      return;
-    }
-    if (text.startsWith(CHUNK_ACK_PREFIX)) {
-      const chunkId = text.slice(CHUNK_ACK_PREFIX.length);
-      pendingAcks.get(chunkId)?.();
-      pendingAcks.delete(chunkId);
-      return;
-    }
-    onMessage?.(JSON.parse(text));
-  };
-
-  function handleChunk(text) {
-    const [, chunkId, indexStr, totalStr, payload] = text.split(":");
-    const index = Number(indexStr);
-    const total = Number(totalStr);
-    let entry = chunks.get(chunkId);
-    if (!entry) {
-      entry = { parts: new Map(), size: total };
-      chunks.set(chunkId, entry);
-    }
-    entry.parts.set(index, payload);
-    // Tell the sender this chunk arrived so it can release memory.
-    if (channel.readyState === "open") {
-      channel.send(`${CHUNK_ACK_PREFIX}${chunkId}`);
-    }
-    if (entry.parts.size === total) {
-      chunks.delete(chunkId);
-      const full = Array.from({ length: total }, (_, i) => entry.parts.get(i)).join("");
-      onMessage?.(JSON.parse(full));
-    }
-  }
-
-  /** Resolves with the SDP offer once ICE gathering is complete. */
   async function getOffer() {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await waitForIceGatheringComplete(pc);
-    return pc.localDescription;
+    await peer.setLocalDescription(await peer.createOffer());
+    await waitForIceGatheringComplete(peer);
+    return peer.localDescription;
   }
 
-  /** Accepts the guest's answer SDP. */
   async function acceptAnswer(answer) {
-    await pc.setRemoteDescription(answer);
-  }
-
-  /**
-   * Sends a JS object. Splits into ~16 KB chunks and reassembles on the other
-   * side; every chunk is acknowledged so the sender does not buffer forever.
-   */
-  async function send(dataObject) {
-    if (channel.readyState !== "open") {
-      throw new Error("Channel is not open — cannot send.");
-    }
-    const text = JSON.stringify(dataObject);
-    if (text.length <= CHUNK_SIZE) {
-      channel.send(text);
-      return;
-    }
-    const chunkId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const total = Math.ceil(text.length / CHUNK_SIZE);
-    for (let i = 0; i < total; i += 1) {
-      const payload = text.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      await new Promise((resolve) => pendingAcks.set(chunkId, resolve));
-      channel.send(`${CHUNK_PREFIX}:${chunkId}:${i}:${total}:${payload}`);
-    }
+    await peer.setRemoteDescription(answer);
   }
 
   function disconnect() {
-    try {
-      channel.close();
-    } catch {
-      // Already closed.
-    }
-    try {
-      pc.close();
-    } catch {
-      // Already closed.
-    }
+    transport.dispose();
+    try { channel.close(); } catch { /* already closed */ }
+    try { peer.close(); } catch { /* already closed */ }
     setStatus("disconnected");
   }
 
-  return { getStatus: () => status, getOffer, acceptAnswer, send, disconnect, pc };
+  return { getStatus: () => status, getOffer, acceptAnswer, send: transport.send, disconnect, pc: peer };
 }
 
-/**
- * Builds a guest peer connection (no data channel of its own; it adopts the
- * host's channel). Returns the same controller shape as createHost.
- */
 export function createGuest(onMessage, onStateChange) {
-  const pc = new RTCPeerConnection(RTC_CONFIG);
-  const chunks = new Map();
-  const pendingAcks = new Map();
+  const peer = new RTCPeerConnection(RTC_CONFIG);
   let status = "connecting";
   let channel = null;
+  let transport = null;
+  const setStatus = (next) => { status = next; reportState(onStateChange, { status }); };
 
-  function setStatus(next) {
-    status = next;
-    reportState(onStateChange, { status });
-  }
-
-  pc.ondatachannel = (event) => {
+  peer.ondatachannel = (event) => {
     channel = event.channel;
+    transport = createChunkTransport(channel, onMessage);
     channel.onopen = () => setStatus("connected");
     channel.onclose = () => setStatus("disconnected");
     channel.onerror = () => setStatus("disconnected");
-    channel.onmessage = (e) => {
-      const text = String(e.data);
-      if (text.startsWith(CHUNK_PREFIX)) {
-        handleChunk(text);
-        return;
-      }
-      if (text.startsWith(CHUNK_ACK_PREFIX)) {
-        const chunkId = text.slice(CHUNK_ACK_PREFIX.length);
-        pendingAcks.get(chunkId)?.();
-        pendingAcks.delete(chunkId);
-        return;
-      }
-      onMessage?.(JSON.parse(text));
-    };
+    channel.onmessage = transport.handleMessage;
   };
 
-  function handleChunk(text) {
-    const [, chunkId, indexStr, totalStr, payload] = text.split(":");
-    const index = Number(indexStr);
-    const total = Number(totalStr);
-    let entry = chunks.get(chunkId);
-    if (!entry) {
-      entry = { parts: new Map(), size: total };
-      chunks.set(chunkId, entry);
-    }
-    entry.parts.set(index, payload);
-    if (channel && channel.readyState === "open") {
-      channel.send(`${CHUNK_ACK_PREFIX}${chunkId}`);
-    }
-    if (entry.parts.size === total) {
-      chunks.delete(chunkId);
-      const full = Array.from({ length: total }, (_, i) => entry.parts.get(i)).join("");
-      onMessage?.(JSON.parse(full));
-    }
-  }
-
   async function acceptOffer(offer) {
-    await pc.setRemoteDescription(offer);
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    await waitForIceGatheringComplete(pc);
-    return pc.localDescription;
+    await peer.setRemoteDescription(offer);
+    await peer.setLocalDescription(await peer.createAnswer());
+    await waitForIceGatheringComplete(peer);
+    return peer.localDescription;
   }
 
   async function send(dataObject) {
-    if (!channel || channel.readyState !== "open") {
-      throw new Error("Channel is not open — cannot send.");
-    }
-    const text = JSON.stringify(dataObject);
-    if (text.length <= CHUNK_SIZE) {
-      channel.send(text);
-      return;
-    }
-    const chunkId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const total = Math.ceil(text.length / CHUNK_SIZE);
-    for (let i = 0; i < total; i += 1) {
-      const payload = text.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      await new Promise((resolve) => pendingAcks.set(chunkId, resolve));
-      channel.send(`${CHUNK_PREFIX}:${chunkId}:${i}:${total}:${payload}`);
-    }
+    if (!transport) throw new Error("Channel is not open — cannot send.");
+    return transport.send(dataObject);
   }
 
   function disconnect() {
-    try {
-      channel?.close();
-    } catch {
-      // Already closed.
-    }
-    try {
-      pc.close();
-    } catch {
-      // Already closed.
-    }
+    transport?.dispose();
+    try { channel?.close(); } catch { /* already closed */ }
+    try { peer.close(); } catch { /* already closed */ }
     setStatus("disconnected");
   }
 
-  return { getStatus: () => status, acceptOffer, send, disconnect, pc };
+  return { getStatus: () => status, acceptOffer, send, disconnect, pc: peer };
 }
 
-/**
- * Mode A — automatic handshake between two tabs on the same machine.
- * One tab calls startAutoHost, the other startAutoGuest; BroadcastChannel
- * carries the SDP offers/answers between them.
- */
 export function startAutoHost(onMessage, onStateChange) {
   const controller = createHost(onMessage, onStateChange);
-  const signal = new BroadcastChannel(SIGNAL_CHANNEL_NAME);
-
+  const signal = createSignalChannel();
+  let offer;
+  let offerRetry;
+  const broadcastOffer = () => {
+    if (offer) signal.postMessage({ type: "R2_OFFER", offer });
+  };
   signal.onmessage = async (event) => {
     if (event.data?.type === "R2_ANSWER") {
+      clearInterval(offerRetry);
       await controller.acceptAnswer(event.data.answer);
       signal.close();
+    } else if (event.data?.type === "R2_READY" && offer) {
+      broadcastOffer();
     }
   };
-
-  controller.getOffer().then((offer) => {
-    signal.postMessage({ type: "R2_OFFER", offer });
+  controller.getOffer().then((description) => {
+    offer = description;
+    broadcastOffer();
+    offerRetry = setInterval(broadcastOffer, 750);
   });
-
-  const originalDisconnect = controller.disconnect;
-  controller.disconnect = () => {
-    try {
-      signal.close();
-    } catch {
-      // Ignore.
-    }
-    originalDisconnect();
-  };
+  const disconnect = controller.disconnect;
+  controller.disconnect = () => { clearInterval(offerRetry); try { signal.close(); } catch { /* already closed */ } disconnect(); };
   return controller;
 }
 
 export function startAutoGuest(onMessage, onStateChange) {
   const controller = createGuest(onMessage, onStateChange);
-  const signal = new BroadcastChannel(SIGNAL_CHANNEL_NAME);
-
+  const signal = createSignalChannel();
+  const announceReady = () => signal.postMessage({ type: "R2_READY" });
+  const readyRetry = setInterval(announceReady, 750);
   signal.onmessage = async (event) => {
     if (event.data?.type === "R2_OFFER") {
+      clearInterval(readyRetry);
       const answer = await controller.acceptOffer(event.data.offer);
       signal.postMessage({ type: "R2_ANSWER", answer });
       signal.close();
     }
   };
-
-  const originalDisconnect = controller.disconnect;
-  controller.disconnect = () => {
-    try {
-      signal.close();
-    } catch {
-      // Ignore.
-    }
-    originalDisconnect();
-  };
+  announceReady();
+  const disconnect = controller.disconnect;
+  controller.disconnect = () => { clearInterval(readyRetry); try { signal.close(); } catch { /* already closed */ } disconnect(); };
   return controller;
 }
 
-/** Mode B — manual copy/paste: serializes an offer to a string for the guest. */
 export async function offerToText(hostController) {
-  const offer = await hostController.getOffer();
-  return JSON.stringify(offer);
+  return JSON.stringify(await hostController.getOffer());
 }
 
-/** Mode B — guest side: accept a pasted offer string, return answer string. */
 export async function acceptOfferFromText(guestController, offerText) {
-  const answer = await guestController.acceptOffer(JSON.parse(offerText));
-  return JSON.stringify(answer);
+  return JSON.stringify(await guestController.acceptOffer(JSON.parse(offerText)));
 }
 
-/** Mode B — host side: accept the pasted answer string. */
 export async function acceptAnswerFromText(hostController, answerText) {
   await hostController.acceptAnswer(JSON.parse(answerText));
 }

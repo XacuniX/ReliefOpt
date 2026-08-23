@@ -2,7 +2,14 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-export default function Dialog({ isOpen, onClose, title, children, persistent = false }) {
+export default function Dialog({
+  isOpen,
+  onClose,
+  title,
+  children,
+  persistent = false,
+  allowCloseButtonWhenPersistent = false,
+}) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -37,8 +44,8 @@ export default function Dialog({ isOpen, onClose, title, children, persistent = 
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h2 className="text-lg font-bold text-foreground m-0">{title}</h2>
           <button
-            onClick={persistent ? undefined : onClose}
-            disabled={persistent}
+            onClick={onClose}
+            disabled={persistent && !allowCloseButtonWhenPersistent}
             className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
             aria-label="Close"
           >

@@ -1,19 +1,19 @@
 import { openDB } from "idb";
-import { seedData } from "../mockData";
+import { seedData } from "../mockData.js";
 
 const DB_NAME = "reliefopt";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+export const AUTHORITATIVE_STORES = [
+  "reports", "tasks", "inventory", "users", "teams", "warehouses",
+  "notifications", "stockLog", "mapPins",
+];
 export const STORES = [
-  "reports",
-  "tasks",
-  "inventory",
-  "users",
-  "teams",
-  "warehouses",
-  "notifications",
-  "stockLog",
-  "mapPins",
+  ...AUTHORITATIVE_STORES,
   "syncQueue",
+  "proposalOutbox",
+  "snapshots",
+  "drafts",
+  "settings",
   "meta",
 ];
 
@@ -43,6 +43,46 @@ export async function remove(store, id) {
 
 export async function clearStore(store) {
   return (await getDB()).clear(store);
+}
+
+export async function getMeta(id) {
+  return (await getDB()).get("meta", id);
+}
+
+export async function setMeta(id, value) {
+  return (await getDB()).put("meta", { id, value });
+}
+
+/** Atomically replaces only authoritative stores and never touches the proposal outbox. */
+export async function applyAuthoritativeSnapshot(snapshot) {
+  if (!Number.isSafeInteger(snapshot?.snapshotSeq) || !snapshot?.data) return false;
+  const db = await getDB();
+  const tx = db.transaction([...AUTHORITATIVE_STORES, "snapshots", "meta"], "readwrite");
+  const current = await tx.objectStore("meta").get("snapshotSeq");
+  if (Number(current?.value ?? -1) >= snapshot.snapshotSeq) {
+    await tx.done;
+    return false;
+  }
+  for (const store of AUTHORITATIVE_STORES) {
+    const objectStore = tx.objectStore(store);
+    await objectStore.clear();
+    for (const record of snapshot.data[store] || []) await objectStore.put(record);
+  }
+  await tx.objectStore("meta").put({ id: "snapshotSeq", value: snapshot.snapshotSeq });
+  await tx.objectStore("meta").put({ id: "lastSyncedAt", value: snapshot.generatedAt || new Date().toISOString() });
+  await tx.objectStore("snapshots").put({ id: "current", ...snapshot });
+  await tx.done;
+  return true;
+}
+
+export async function clearDomainCache({ preserveOutbox = true } = {}) {
+  const stores = preserveOutbox
+    ? [...AUTHORITATIVE_STORES, "syncQueue", "drafts", "snapshots", "meta"]
+    : [...AUTHORITATIVE_STORES, "syncQueue", "proposalOutbox", "drafts", "snapshots", "meta"];
+  const db = await getDB();
+  const tx = db.transaction(stores, "readwrite");
+  await Promise.all(stores.map((store) => tx.objectStore(store).clear()));
+  await tx.done;
 }
 
 /**

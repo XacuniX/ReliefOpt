@@ -9,7 +9,9 @@ export default function MyTasksList({ tasks, onUpdateTask }) {
   const { currentUser } = useAuth();
   const [updatingId, setUpdatingId] = useState("");
   const [updateText, setUpdateText] = useState("");
-  const myTasks = tasks.filter((task) => task.assignedTo === currentUser.name);
+  const myTasks = tasks.filter((task) =>
+    task.assignedUserId ? task.assignedUserId === currentUser.id : task.assignedTo === currentUser.name
+  );
 
   function saveUpdate(task) {
     if (updateText.trim()) onUpdateTask(task.id, { updates: [...(task.updates || []), updateText.trim()] });

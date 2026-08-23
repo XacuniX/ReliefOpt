@@ -66,7 +66,7 @@ Legend: ✅ done · ⚠️ exists but needs changing · ❌ not built
 | **UrgencyScore** | No `calculate()`, no `getZone()`, none of `daysWithoutFood` / `waterLevel` / `peopleCount` / `vulnerablePersons` / `distanceFromAid`. [UrgencyGauge.jsx](src/components/reports/UrgencyGauge.jsx) is **display-only** and its `factors` prop is never passed real data. The only scoring in the repo is a one-liner: `severity * 20 + (children?10:0) + (elderly?10:0)` at [ReportForm.jsx:43](src/components/reports/ReportForm.jsx#L43). **This is the Level-4 core deliverable and it does not exist.** |
 | **VoiceReport** | [VoiceReportModal.jsx](src/components/map/VoiceReportModal.jsx) has a **hardcoded transcript string and a hardcoded extracted object** (lines 12–19). No `getUserMedia`, no `MediaRecorder`, no Whisper, no `transcribeAudio()`, no `extractFields()`. It drops a map pin but never `<<create>>`s a `Report`, so the diagram's create-dependency is unrealised. |
 | **Warehouse** | **No entity exists.** Warehouses are only the strings `"Warehouse A".."E"` on inventory rows. No `id`, no `location: GeoPoint`, no `managerId`, no `getInventory()`, no `getLowStockItems()`. The `stores` and `loaded with` associations have nothing to hang off. |
-| **SyncManager** | No such module. [SyncIndicator.jsx](src/components/sync/SyncIndicator.jsx) reads `navigator.onLine` and shows a pill. No `lastSyncedAt`, no `pendingCount`, no `syncWithCloud()` (there is no cloud), no `syncWithPeer()`. |
+| **SyncManager** | No such module. [SyncIndicator.jsx](src/components/sync/SyncIndicator.jsx) reads `navigator.onLine` and shows a pill. No proposal outbox, no `lastCentralSyncTimestamp`, no `pendingCount`, and no central approval workflow yet. |
 | **PeerDevice** | **Zero WebRTC.** No `RTCPeerConnection` anywhere in `src/`. [PeerPanel.jsx](src/components/sync/PeerPanel.jsx) maps a static array and `handleShareData()` is a 2-second `setTimeout` toast. `discover()`/`connect()`/`shareData()` are all fake. |
 
 ---
@@ -119,11 +119,23 @@ Legend: ✅ done · ⚠️ exists but needs changing · ❌ not built
 
 ## Architecture decisions (confirmed)
 
-- **No backend, no server process.** IndexedDB is the sole source of truth. `SyncManager.syncWithCloud()`
-  is implemented against the local store (queue drain + `lastSyncedAt` bookkeeping) and documented as
-  cloud-ready rather than pretending a cloud exists.
+- **Central-Command-authoritative synchronization.** A designated Central Command node is the
+  single source of truth (SSoT). It alone commits permanent state, advances
+  `lastCentralSyncTimestamp`, and publishes snapshots. Field nodes submit proposals into a local
+  outbox and converge by ingesting newer snapshots. This is **eventual consistency via centralized
+  master snapshot distribution**, not multi-peer bidirectional merge.
+- **No backend, no server process.** Central Command is an in-app authoritative session backed by
+  IndexedDB, not a remote service. IndexedDB is each node's local cache; only Central Command's
+  stores are authoritative.
+- **Proposal-only field mutations.** A field worker's report, task update, or inventory adjustment
+  becomes a `Pending` proposal in the device-local outbox. It never becomes shared state until
+  Central Command explicitly approves and broadcasts it.
+- **Timestamped snapshot P2P propagation.** Peer connections exchange whole snapshots carrying
+  `lastCentralSyncTimestamp`. A receiver ingests a snapshot only when the sender's timestamp is
+  newer than its own; otherwise it ignores it. Peers never exchange proposals or per-mutation
+  deltas, which prevents split-brain, cyclic delta loops, and unauthorized disconnected mutation.
 - **All four Level-5 features are built for real**: urgency scoring, cargo packing, offline PWA +
-  tile caching, real-audio voice-to-map, and WebRTC P2P.
+  tile caching, real-audio voice-to-map, and WebRTC snapshot transport.
 - **Speech runs fully in-browser** via `@huggingface/transformers` (transformers.js v3) with a
   quantised Whisper model, cached in Cache Storage so it works offline after first load.
 - **WebRTC uses real `RTCPeerConnection` + `RTCDataChannel`.** With no server there is no signalling
@@ -188,12 +200,12 @@ Legend: ✅ done · ⚠️ exists but needs changing · ❌ not built
 9. Leaflet tile caching: custom `TileLayer` that reads/writes tiles in IndexedDB, wired to
    the existing (currently dead) Settings cache-size slider, with an eviction policy and a
    "pre-cache this region" control.
-10. Real `SyncManager` + `SyncQueueEntry`: every mutation dispatched while `isOffline`
-    enqueues a typed `{ actionType, payload }` instead of a `details` string; `retryAll()`
-    genuinely drains it and applies the payloads. Wire real `pendingCount` and
-    `lastSyncedAt` into [SyncIndicator.jsx](src/components/sync/SyncIndicator.jsx) and
-    replace the `Math.random()` fake retry in
-    [OfflineQueue.jsx](src/components/sync/OfflineQueue.jsx).
+10. Real proposal outbox: every field mutation while offline enqueues a typed `Proposal`
+    (`{ id, proposalType, payload, userId, status, timestamp }`) instead of a `details`
+    string, and delivers pending proposals only to Central Command on reconnect. Wire real
+    `pendingCount` and `lastCentralSyncTimestamp` into
+    [SyncIndicator.jsx](src/components/sync/SyncIndicator.jsx) and replace the
+    `Math.random()` fake retry in [OfflineQueue.jsx](src/components/sync/OfflineQueue.jsx).
 
 ### Phase D — Level-5 showcase features
 11. **Voice (real audio, fully client-side)**: `src/lib/speech.js` — `getUserMedia` +
@@ -206,10 +218,11 @@ Legend: ✅ done · ⚠️ exists but needs changing · ❌ not built
     then plots its own pin. Keep a manual-text fallback.
 12. **P2P (real WebRTC)**: `src/lib/p2p.js` — `RTCPeerConnection` + `RTCDataChannel` behind
     a `SignalChannel` interface (`BroadcastChannel` impl for the multi-tab demo, manual
-    paste/QR impl for cross-device). Implement `PeerDevice.discover/connect/shareData` for
-    real, replacing the static array and `setTimeout` toast in
-    [PeerPanel.jsx](src/components/sync/PeerPanel.jsx). Shared payload = the sync queue +
-    changed entities, merged last-write-wins on receipt.
+    paste/QR impl for cross-device). Implement `PeerDevice.connect/shareSnapshot` for real,
+    replacing the static array and `setTimeout` toast in
+    [PeerPanel.jsx](src/components/sync/PeerPanel.jsx). Shared payload = an authoritative
+    snapshot carrying `lastCentralSyncTimestamp`; the receiver ingests it only when the
+    timestamp is newer, and never merges proposals.
 
 ### Phase E — Polish
 13. Real `login(username, password)` against the user list, with the session persisted so a
@@ -234,7 +247,7 @@ Two Markdown files written into the project repo:
 
 | Member | Share | Scope |
 |---|---|---|
-| **RKN** | 50% | Voice-to-text module (Whisper WASM, mic capture, Bangla/Banglish extraction) + WebRTC P2P mesh + SyncManager/sync queue |
+| **RKN** | 50% | Voice-to-text module (Whisper WASM, mic capture, Bangla/Banglish extraction) + WebRTC snapshot relay + proposal outbox |
 | **YSR** | 25% | Data layer: IndexedDB persistence, `DataContext`, ID refactor, `Warehouse` entity, StockLog wiring, real login |
 | **NFT** | 25% | Urgency scoring algorithm + cargo packing algorithm + PWA service worker + offline map tile caching |
 

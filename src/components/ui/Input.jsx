@@ -10,6 +10,7 @@ export default function Input({
   type = "text",
   className,
   id,
+  ...props
 }) {
   const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
@@ -27,6 +28,7 @@ export default function Input({
         value={value}
         onChange={onChange}
         disabled={disabled}
+        {...props}
         className={cn(
           "w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
           error ? "border-red-500" : "border-border"

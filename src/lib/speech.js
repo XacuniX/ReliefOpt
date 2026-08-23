@@ -1,17 +1,40 @@
-import { pipeline, env } from "@huggingface/transformers";
-
-env.allowLocalModels = false; // always fetch from the internet the first time
-
 const MODEL_ID = "Xenova/whisper-base";
 let transcriber = null;
+let transformersPromise = null;
 
-/** Loads the AI model. Call once. onProgress gets {progress: 0-100}. */
+async function getTransformers() {
+  if (!transformersPromise) {
+    transformersPromise = import("@huggingface/transformers").then((module) => {
+      module.env.allowLocalModels = false;
+      return module;
+    });
+  }
+  return transformersPromise;
+}
+
+/**
+ * Loads the AI model. Call once. Transformers.js emits both per-file progress
+ * and aggregate progress; only the aggregate byte progress is forwarded so
+ * the UI cannot jump when the next model file starts downloading.
+ */
 export async function loadModel(onProgress) {
   if (transcriber) return transcriber;
+  const { pipeline } = await getTransformers();
+  let lastProgress = 0;
+  const reportProgress = (info) => {
+    if (info?.status === "progress_total" && Number.isFinite(info.progress)) {
+      const progress = Math.min(100, Math.max(lastProgress, info.progress));
+      lastProgress = progress;
+      onProgress?.({ ...info, progress });
+    } else if (info?.status === "ready") {
+      lastProgress = 100;
+      onProgress?.({ ...info, progress: 100 });
+    }
+  };
   transcriber = await pipeline("automatic-speech-recognition", MODEL_ID, {
     dtype: "q8",
     device: navigator.gpu ? "webgpu" : "wasm",
-    progress_callback: onProgress,
+    progress_callback: reportProgress,
   });
   return transcriber;
 }

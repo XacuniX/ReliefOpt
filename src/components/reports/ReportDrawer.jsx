@@ -3,10 +3,12 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import { Button, Badge, Textarea, Toast } from "../ui";
 import Sheet from "../ui/Sheet";
 import UrgencyGauge from "./UrgencyGauge";
-import { cityCoords, teams } from "../../mockData";
+import { cityCoords } from "../../mockData";
 import { calculateUrgency } from "../../lib/urgency";
+import { useData } from "../../context/DataContext";
 
-export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }) {
+export default function ReportDrawer({ report, isOpen, onClose }) {
+  const { teams, updateReport, addReportNote } = useData();
   const [showAssign, setShowAssign] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -29,13 +31,13 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
     ? { score: report.urgencyScore, factors: report.urgencyFactors }
     : calculatedUrgency;
 
-  function handleAction(action) {
+  async function handleAction(action) {
     if (action === "Acknowledge") {
-      onStatusChange?.(report.id, "Acknowledged");
-      setToast({ type: "info", message: "Report acknowledged." });
+      const result = await updateReport(report.id, { status: "Acknowledged" });
+      setToast({ type: "info", message: result.status === "Accepted" ? "Report acknowledged." : "Acknowledgement pending approval." });
     } else if (action === "Mark Resolved") {
-      onStatusChange?.(report.id, "Resolved");
-      setToast({ type: "success", message: "Report marked as resolved." });
+      const result = await updateReport(report.id, { status: "Resolved" });
+      setToast({ type: "success", message: result.status === "Accepted" ? "Report marked as resolved." : "Resolution pending approval." });
     } else if (action === "Assign Team") {
       setShowAssign(!showAssign);
     } else if (action === "Add Note") {
@@ -44,9 +46,10 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
     setTimeout(() => setToast(null), 3000);
   }
 
-  function handleSaveNote() {
+  async function handleSaveNote() {
     if (noteText.trim()) {
-      setToast({ type: "info", message: "Note saved." });
+      const result = await addReportNote(report.id, { text: noteText.trim() });
+      setToast({ type: "info", message: result.status === "Accepted" ? "Note saved." : "Note saved pending approval." });
       setNoteText("");
       setShowNote(false);
       setTimeout(() => setToast(null), 3000);
@@ -79,7 +82,7 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
             ["Severity", `${report.severity}/5`],
             ["Submitted By", report.submittedBy],
             ["Time", new Date(report.time).toLocaleString([], { dateStyle: "short", timeStyle: "short" })],
-            ["Affected", report.affectedCount.toLocaleString()],
+            ["Affected", Number(report.affectedCount || 0).toLocaleString()],
             ["Children", report.childrenPresent ? "Yes" : "No"],
             ["Elderly", report.elderlyPresent ? "Yes" : "No"],
           ].map(([label, value]) => (
@@ -114,6 +117,22 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
 
         <UrgencyGauge score={urgency.score} factors={urgency.factors} />
 
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned Team</p>
+          <p className="text-sm">{teams.find((team) => team.id === report.assignedTeamId)?.name || "Unassigned"}</p>
+        </div>
+
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Notes</p>
+          {(report.notes || []).map((note) => (
+            <div key={note.id || note.timestamp} className="rounded-md bg-muted p-2 mb-2 text-sm">
+              <p>{note.text}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{note.author || "Unknown"} · {new Date(note.timestamp).toLocaleString()}</p>
+            </div>
+          ))}
+          {!(report.notes || []).length && <p className="text-sm text-muted-foreground">No notes yet.</p>}
+        </div>
+
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             {report.status === "Pending" && (
@@ -141,8 +160,9 @@ export default function ReportDrawer({ report, isOpen, onClose, onStatusChange }
                 <button
                   key={team.id}
                   className="block w-full text-left text-sm px-2 py-1 rounded hover:bg-accent transition-colors text-foreground"
-                  onClick={() => {
-                    setToast({ type: "info", message: `Assigned to ${team.name}` });
+                  onClick={async () => {
+                    const result = await updateReport(report.id, { assignedTeamId: team.id });
+                    setToast({ type: "info", message: result.status === "Accepted" ? `Assigned to ${team.name}.` : `Assignment to ${team.name} pending approval.` });
                     setShowAssign(false);
                     setTimeout(() => setToast(null), 3000);
                   }}

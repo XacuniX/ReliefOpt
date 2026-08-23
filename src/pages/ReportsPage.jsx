@@ -18,14 +18,14 @@ const statusColors = {
 };
 
 export default function ReportsPage() {
-  const { reports, updateReport } = useData();
+  const { reports } = useData();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedReportId, setSelectedReportId] = useState(null);
   const [sortKey, setSortKey] = useState("urgencyScore");
   const [sortDir, setSortDir] = useState("desc");
 
@@ -76,9 +76,7 @@ export default function ReportsPage() {
     }
   }
 
-  function handleStatusChange(reportId, newStatus) {
-    updateReport(reportId, { status: newStatus });
-  }
+  const selectedReport = reports.find((report) => report.id === selectedReportId) || null;
 
   const columns = [
     {
@@ -113,7 +111,10 @@ export default function ReportsPage() {
       key: "status",
       label: "Status",
       render: (row) => (
-        <Badge color={statusColors[row.status] || "grey"} text={row.status} />
+        <div className="flex flex-wrap gap-1">
+          <Badge color={statusColors[row.status] || "grey"} text={row.status} />
+          {row.pendingApproval && <Badge color="amber" text="Pending approval" />}
+        </div>
       ),
     },
     { key: "submittedBy", label: "Submitted By" },
@@ -191,14 +192,13 @@ export default function ReportsPage() {
         onSort={handleSort}
         sortKey={sortKey}
         sortDir={sortDir}
-        onRowClick={setSelectedReport}
+        onRowClick={(report) => setSelectedReportId(report.id)}
       />
 
       <ReportDrawer
         report={selectedReport}
         isOpen={!!selectedReport}
-        onClose={() => setSelectedReport(null)}
-        onStatusChange={handleStatusChange}
+        onClose={() => setSelectedReportId(null)}
       />
     </div>
   );

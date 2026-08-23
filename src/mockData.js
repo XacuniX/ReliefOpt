@@ -923,6 +923,7 @@ export const cargoVehicles = [
     length: 6.2,
     width: 2.4,
     height: 2.5,
+    maxWeight: 3000,
   },
   {
     id: "cv2",
@@ -930,6 +931,7 @@ export const cargoVehicles = [
     length: 4.5,
     width: 2.0,
     height: 2.0,
+    maxWeight: 1200,
   },
   {
     id: "cv3",
@@ -937,6 +939,7 @@ export const cargoVehicles = [
     length: 9.0,
     width: 2.6,
     height: 2.8,
+    maxWeight: 8000,
   },
 ];
 

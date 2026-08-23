@@ -25,7 +25,6 @@ export default function VoiceReportModal() {
   const [edits, setEdits] = useState({});
 
   const recorderRef = useRef(null);
-  const timerRef = useRef(null);
   const tickRef = useRef(null);
 
   const extracted = transcript ? extractFields(transcript) : null;
@@ -44,7 +43,6 @@ export default function VoiceReportModal() {
 
   useEffect(() => {
     return () => {
-      clearTimeout(timerRef.current);
       clearInterval(tickRef.current);
     };
   }, []);
@@ -55,7 +53,6 @@ export default function VoiceReportModal() {
   }
 
   function reset() {
-    clearTimeout(timerRef.current);
     clearInterval(tickRef.current);
     recorderRef.current = null;
     setStage("idle");
@@ -71,13 +68,17 @@ export default function VoiceReportModal() {
     setStage("loading");
     setError("");
     try {
-      await loadModel(({ progress: p }) => setProgress(p ?? 0));
+      await loadModel(({ progress: p }) => {
+        if (Number.isFinite(p)) {
+          setProgress((current) => Math.min(100, Math.max(current, p)));
+        }
+      });
       const recorder = await startRecording();
       recorderRef.current = recorder;
       setElapsed(0);
       setStage("recording");
       tickRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    } catch (err) {
+    } catch {
       setError(
         "Could not access the microphone. Make sure you're on localhost or https and grant mic permission — or type the report below instead."
       );
@@ -86,7 +87,6 @@ export default function VoiceReportModal() {
   }
 
   async function stopRecording() {
-    clearTimeout(timerRef.current);
     clearInterval(tickRef.current);
     const recorder = recorderRef.current;
     if (!recorder) return;
@@ -95,7 +95,7 @@ export default function VoiceReportModal() {
       const blob = await recorder.stop();
       const text = await transcribe(blob, language);
       finish(text);
-    } catch (err) {
+    } catch {
       setError("Speech recognition failed. Please try again, or type the report below instead.");
       setStage("error");
     }
@@ -120,7 +120,7 @@ export default function VoiceReportModal() {
     });
 
     const report = {
-      id: `voice-${Date.now()}`,
+      id: crypto.randomUUID(),
       type: "Other",
       district: fields.location ?? "Unknown",
       location: coords ? { lat: coords[0], lng: coords[1] } : undefined,
@@ -146,11 +146,14 @@ export default function VoiceReportModal() {
       id: crypto.randomUUID(),
       position: coords ?? [23.8103, 90.4125],
       location: fields.location ?? "Unknown",
+      locationName: fields.location ?? "Unknown",
+      lat: (coords ?? [23.8103, 90.4125])[0],
+      lng: (coords ?? [23.8103, 90.4125])[1],
+      waterLevelFt: fields.waterLevelFt,
       waterLevel:
         fields.waterLevelFt != null ? `${fields.waterLevelFt}ft` : "—",
-      peopleCount:
-        fields.peopleCount != null ? String(fields.peopleCount) : "—",
-      childrenPresent: fields.childrenPresent ? "Yes" : "No",
+      peopleCount: fields.peopleCount,
+      childrenPresent: Boolean(fields.childrenPresent),
     };
     addMapPin(pin);
 
@@ -160,7 +163,6 @@ export default function VoiceReportModal() {
   }
 
   function handleClose() {
-    clearTimeout(timerRef.current);
     clearInterval(tickRef.current);
     if (recorderRef.current) {
       recorderRef.current.stop().catch(() => {});
@@ -184,6 +186,7 @@ export default function VoiceReportModal() {
         onClose={handleClose}
         title="Voice Report"
         persistent={["loading", "recording", "transcribing", "done"].includes(stage)}
+        allowCloseButtonWhenPersistent
       >
         <div className="space-y-4">
           {stage === "idle" && (

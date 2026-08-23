@@ -9,15 +9,22 @@ const statuses = ["To Do", "In Progress", "En Route", "Completed"];
 const priorityColors = { Critical: "red", High: "orange", Medium: "teal", Low: "grey" };
 const columnBg = { "To Do": "bg-teal-50/50 dark:bg-blue-950/20", "In Progress": "bg-amber-50/50 dark:bg-amber-950/20", "En Route": "bg-purple-50/50 dark:bg-purple-950/20", Completed: "bg-emerald-50/50 dark:bg-emerald-950/20" };
 
-function teamFor(users, assignee) {
-  return users.find((user) => user.name === assignee)?.team || assignee || "Unassigned team";
+function assignmentFor(users, teams, task) {
+  const assignedUser = task.assignedUserId
+    ? users.find((user) => user.id === task.assignedUserId)
+    : users.find((user) => user.name === task.assignedTo);
+  if (assignedUser) {
+    return `${assignedUser.name}${assignedUser.team ? ` · ${assignedUser.team}` : ""}`;
+  }
+  return teams.find((team) => team.id === task.assignedTeamId)?.name
+    || task.assignedTeam || task.assignedTo || "Unassigned";
 }
 
 function dueLabel(time) {
   return `Due ${new Date(time).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`;
 }
 
-function KanbanBoard({ taskList, users, onMoveTask }) {
+function KanbanBoard({ taskList, users, teams, onMoveTask }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-2">
       {statuses.map((status) => {
@@ -35,7 +42,8 @@ function KanbanBoard({ taskList, users, onMoveTask }) {
                   <Card key={task.id} className="p-4">
                     <p className="text-xs text-muted-foreground m-0">{task.id}</p>
                     <h3 className="text-base font-semibold leading-tight my-1.5">{task.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{teamFor(users, task.assignedTo)}</p>
+                    <p className="text-sm text-muted-foreground mb-3">{assignmentFor(users, teams, task)}</p>
+                    {task.pendingApproval && <Badge color="amber" text="Pending approval" />}
                     <div className="flex items-center gap-2 justify-between">
                       <Badge color={priorityColors[task.priority]} text={task.priority} />
                       {nextStatus && (
@@ -66,13 +74,15 @@ function KanbanBoard({ taskList, users, onMoveTask }) {
 }
 
 export default function TasksPage() {
-  const { ready, tasks, users, addTask, updateTask } = useData();
+  const { ready, tasks, users, teams, reports, addTask, updateTask } = useData();
   const [toastMessage, setToastMessage] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  function createTask(task) {
-    addTask(task);
-    setToastMessage("Task created and added to To Do.");
+  async function createTask(task) {
+    const result = await addTask(task);
+    setToastMessage(result?.status === "Accepted"
+      ? "Task committed to Central Command."
+      : "Task saved and pending Central Admin approval.");
   }
 
   if (!ready) {
@@ -90,15 +100,26 @@ export default function TasksPage() {
           <h1 className="text-2xl font-bold text-foreground">Tasks</h1>
           <p className="text-sm text-muted-foreground mt-1">Coordinate relief work from assignment through completion.</p>
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>+ New Task</Button>
+        <RoleGate allowed={["central_admin", "warehouse_manager"]}>
+          <Button onClick={() => setCreateModalOpen(true)}>+ New Task</Button>
+        </RoleGate>
       </div>
       <RoleGate allowed={["central_admin", "warehouse_manager"]}>
-        <KanbanBoard taskList={tasks} users={users} onMoveTask={(id, status) => updateTask(id, { status })} />
+        <KanbanBoard taskList={tasks} users={users} teams={teams} onMoveTask={(id, status) => updateTask(id, { status })} />
       </RoleGate>
       <RoleGate allowed={["field_worker"]}>
         <MyTasksList tasks={tasks} onUpdateTask={updateTask} />
       </RoleGate>
-      <CreateTaskModal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={createTask} />
+      <RoleGate allowed={["central_admin", "warehouse_manager"]}>
+        <CreateTaskModal
+          isOpen={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          onCreate={createTask}
+          teams={teams}
+          users={users}
+          reports={reports}
+        />
+      </RoleGate>
       {toastMessage && <Toast type="success" message={toastMessage} onDismiss={() => setToastMessage("")} />}
     </div>
   );

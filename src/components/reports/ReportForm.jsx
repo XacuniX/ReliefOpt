@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Button, Input, Select, Textarea, Progress, Toast, Badge } from "../ui";
+import { useEffect, useState } from "react";
+import { Button, Input, Select, Textarea, Toast, Badge } from "../ui";
 import { calculateUrgency } from "../../lib/urgency";
 import { useAuth } from "../../context/AuthContext";
+import { getAll, put, remove } from "../../lib/db";
 
 const districts = [
   "Dhaka", "Chattogram", "Khulna", "Rajshahi", "Sylhet", "Barishal",
@@ -27,6 +28,8 @@ export default function ReportForm({ onSubmit }) {
   const { currentUser } = useAuth();
   const [step, setStep] = useState(1);
   const [toast, setToast] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
 
   const [form, setForm] = useState({
     district: "",
@@ -43,11 +46,28 @@ export default function ReportForm({ onSubmit }) {
     elderlyPresent: false,
   });
 
+  useEffect(() => {
+    let cancelled = false;
+    getAll("drafts").then((drafts) => {
+      const draft = drafts.find((entry) => entry.id === "report-form");
+      if (!cancelled && draft?.form) {
+        setForm(draft.form);
+        setStep(draft.step || 1);
+      }
+    }).finally(() => { if (!cancelled) setDraftReady(true); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    void put("drafts", { id: "report-form", form, step, updatedAt: new Date().toISOString() });
+  }, [draftReady, form, step]);
+
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const peopleCount = toNullableNumber(form.affectedCount);
     const daysWithoutFood = toNullableNumber(form.daysWithoutFood);
     const waterLevelFt = toNullableNumber(form.waterLevelFt);
@@ -62,7 +82,7 @@ export default function ReportForm({ onSubmit }) {
     });
 
     const report = {
-      id: `voice-${Date.now()}`,
+      id: crypto.randomUUID(),
       type: form.type,
       district: form.district,
       location: parseCoordinates(form.coordinates),
@@ -83,8 +103,16 @@ export default function ReportForm({ onSubmit }) {
       childrenPresent: form.childrenPresent,
       elderlyPresent: form.elderlyPresent,
     };
-    onSubmit?.(report);
-    setToast({ type: "success", message: "Report submitted successfully!" });
+    setSubmitting(true);
+    try {
+      const result = await onSubmit?.(report);
+      setToast({
+        type: result?.status === "Accepted" ? "success" : "info",
+        message: result?.status === "Accepted"
+          ? "Report committed to Central Command."
+          : "Report saved and is pending Central Admin approval.",
+      });
+      await remove("drafts", "report-form");
     setForm({
       district: "",
       coordinates: "23.8103, 90.4125",
@@ -99,8 +127,13 @@ export default function ReportForm({ onSubmit }) {
       childrenPresent: false,
       elderlyPresent: false,
     });
-    setStep(1);
-    setTimeout(() => setToast(null), 3000);
+      setStep(1);
+      setTimeout(() => setToast(null), 3000);
+    } catch (error) {
+      setToast({ type: "error", message: error.message || "Report submission failed." });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function getSeverityColor() {
@@ -286,7 +319,7 @@ export default function ReportForm({ onSubmit }) {
             <Button variant="outline" onClick={() => setStep(2)}>
               Back
             </Button>
-            <Button onClick={handleSubmit}>Submit Report</Button>
+            <Button onClick={handleSubmit} loading={submitting}>Submit Report</Button>
           </div>
         </div>
       )}

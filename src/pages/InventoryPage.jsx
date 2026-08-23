@@ -11,7 +11,7 @@ import { Tabs, TabsContent } from "../components/ui/Tabs";
 const warehouses = ["Warehouse A", "Warehouse B", "Warehouse C", "Warehouse D", "Warehouse E"];
 
 export default function InventoryPage() {
-  const { ready, inventory, warehouses: warehouseRecords, addItem, updateItem, addStockLog } = useData();
+  const { ready, inventory, warehouses: warehouseRecords, addItem, updateItem } = useData();
   const { currentUser } = useAuth();
   const [activeWarehouse, setActiveWarehouse] = useState(warehouses[0]);
   const [editingItem, setEditingItem] = useState(undefined);
@@ -44,37 +44,33 @@ export default function InventoryPage() {
     setHighlightItemId(item.id);
   }
 
-  function saveItem(form) {
+  async function saveItem(form) {
     const status = form.qty <= 5 ? "Critical" : form.qty < 20 ? "Low" : "OK";
     const userName = currentUser?.name || "Unknown";
     const warehouseId =
       warehouseRecords.find((w) => w.name === form.warehouse)?.id ?? null;
     if (editingItem) {
-      updateItem(editingItem.id, { ...form, warehouseId, status, lastUpdated: new Date().toISOString() });
       const delta = Number(form.qty) - Number(editingItem.qty);
-      if (delta !== 0) {
-        addStockLog({
+      await updateItem(editingItem.id, {
+        ...form, warehouseId, status, lastUpdated: new Date().toISOString(),
+        ...(delta !== 0 ? { stockLog: {
           id: crypto.randomUUID(),
-          itemId: editingItem.id,
           itemName: form.name,
           change: delta,
           reason: "Adjustment",
           user: userName,
           timestamp: new Date().toISOString(),
-        });
-      }
+        } } : {}),
+      });
       setToastMessage("Inventory item updated successfully.");
     } else {
-      const id = `inv${Date.now()}`;
-      addItem({ ...form, id, warehouseId, status, lastUpdated: new Date().toISOString() });
-      addStockLog({
-        id: crypto.randomUUID(),
-        itemId: id,
-        itemName: form.name,
-        change: form.qty,
-        reason: "Restocking",
-        user: userName,
-        timestamp: new Date().toISOString(),
+      const id = crypto.randomUUID();
+      await addItem({
+        ...form, id, warehouseId, status, lastUpdated: new Date().toISOString(),
+        stockLog: {
+          id: crypto.randomUUID(), itemName: form.name, change: form.qty,
+          reason: "Restocking", user: userName, timestamp: new Date().toISOString(),
+        },
       });
       setToastMessage("Inventory item added successfully.");
     }

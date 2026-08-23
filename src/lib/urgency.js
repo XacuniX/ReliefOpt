@@ -15,6 +15,10 @@ function numericFactor(label, value, unit, points, maxPoints) {
  * Calculates urgency using five factors whose maximum values total 100.
  * Null values represent missing information and never add points.
  */
+/**
+ * @param {{daysWithoutFood?: number|null, waterLevelFt?: number|null, peopleCount?: number|null,
+ * childrenPresent?: boolean|null, elderlyPresent?: boolean|null, distanceFromAidKm?: number|null}} [input]
+ */
 export function calculateUrgency({
   daysWithoutFood,
   waterLevelFt,

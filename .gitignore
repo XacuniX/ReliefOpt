@@ -2,3 +2,9 @@ node_modules/
 dist/
 dev-dist/
 .commandcode/
+server/.env
+server/coverage/
+playwright-report/
+test-results/
+/.env
+/.env.local

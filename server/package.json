@@ -1,0 +1,30 @@
+{
+  "name": "reliefopt-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "migrate": "node src/migrate.js",
+    "seed:demo": "node src/seed-demo.js",
+    "test": "node --test",
+    "test:postgres": "node --test test/postgres.test.js"
+    ,"e2e": "node src/e2e-server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.0",
+    "cors": "^2.8.0",
+    "dotenv": "^16.0.0",
+    "express": "^5.0.0",
+    "express-rate-limit": "^8.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "pg": "^8.0.0"
+  },
+  "devDependencies": {
+    "pg-mem": "^3.0.0"
+  }
+}

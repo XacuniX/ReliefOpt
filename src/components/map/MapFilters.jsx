@@ -19,7 +19,7 @@ export default function MapFilters({ filters, onFilterChange }) {
   }
 
   return (
-    <div className="absolute top-4 right-4 z-[1000] rounded-xl shadow-lg p-4 w-64 space-y-4 bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-teal-900/5 dark:shadow-black/30">
+    <div className="absolute left-3 right-3 top-3 z-[1000] max-h-[calc(100%-1.5rem)] space-y-3 overflow-y-auto rounded-xl border border-teal-500/20 bg-white/90 p-3 shadow-lg shadow-teal-900/5 backdrop-blur-lg dark:border-white/20 dark:bg-[#0b1215]/90 dark:shadow-black/30 sm:left-auto sm:right-4 sm:top-4 sm:w-64 sm:space-y-4 sm:p-4">
       <h3 className="text-sm font-bold text-foreground">Map Filters</h3>
 
       <Input

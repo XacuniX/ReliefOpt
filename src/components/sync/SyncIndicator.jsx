@@ -6,10 +6,13 @@ import PeerPanel from "./PeerPanel";
 import OfflineQueue from "./OfflineQueue";
 import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
 import Dialog from "../ui/Dialog";
+import ApprovalQueue from "./ApprovalQueue";
+import { useAuth } from "../../context/AuthContext";
 
 export default function SyncIndicator() {
-  const { isOffline } = useOffline();
+  const { isOffline, toggleOffline } = useOffline();
   const { pendingCount, lastSyncedAt, syncQueue, drainQueue } = useData();
+  const { currentUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("devices");
 
@@ -56,10 +59,17 @@ export default function SyncIndicator() {
 
       <Dialog isOpen={open} onClose={() => setOpen(false)} title="Sync & Connectivity">
         <div className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Manually simulate connectivity for offline field work.</p>
+            <button type="button" className="rounded-md border px-3 py-1.5 text-xs font-semibold" onClick={toggleOffline}>
+              Simulate {isOffline ? "Online" : "Offline"}
+            </button>
+          </div>
           <div className="flex gap-2">
             {[
               { key: "devices", label: "Nearby Devices" },
               { key: "queue", label: "Offline Queue" },
+              ...(currentUser?.role === "central_admin" ? [{ key: "approvals", label: "Approvals" }] : []),
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -83,6 +93,7 @@ export default function SyncIndicator() {
               lastSyncedAt={lastSyncedAt}
             />
           )}
+          {activeTab === "approvals" && <ApprovalQueue />}
         </div>
       </Dialog>
     </>

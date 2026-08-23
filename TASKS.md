@@ -170,7 +170,6 @@ export async function transcribe(blob) {
 |---|---|---|
 | Mic on `http://` (not localhost) | `getUserMedia` throws instantly | Only test on `localhost` or `https` |
 | First load downloads ~40 MB | User thinks the app froze | Show a progress bar using `progress_callback` |
-| Recording longer than ~15 s | Very slow on phones | Cap recording at 15 seconds with a timer |
 | Model download needs internet **once** | Fails completely offline on a fresh device | Say so in the UI; keep a "Type it instead" fallback box |
 | You forget `language: "bn"` | Whisper guesses, often wrongly | Always pass it |
 
@@ -216,8 +215,8 @@ Test sentence: `"মিরপুরে পানি ৪ ফুট, ১২ জন
 
 Delete the fake transcript (lines 12–19). New flow:
 
-`idle` → `loading model` (progress bar) → `recording` (with a timer) → `transcribing`
-(spinner) → `done`
+`idle` → `loading model` (progress bar) → `recording` (with an elapsed-time display) →
+`transcribing` (spinner) → `done`
 
 On `done`, show the **editable** transcript and the extracted fields, then on confirm:
 
@@ -243,7 +242,6 @@ s
 - [ ] Confirming creates a report that **appears in the table on `/reports`**
 - [ ] It also drops a pin on the map
 - [ ] There is a "type it manually" fallback if the mic or model fails
-- [ ] Recording is capped at 15 seconds
 - [ ] No red errors in the browser console
 
 ---

@@ -48,11 +48,6 @@ void main() {
 `;
 
 /**
- * Valid blur sizes supported by Tailwind CSS.
- */
-const BLUR_SIZES = ["none", "sm", "md", "lg", "xl", "2xl", "3xl"];
-
-/**
  * A mapping from blur size names to Tailwind CSS classes.
  */
 const blurClassMap = {
