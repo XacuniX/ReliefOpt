@@ -23,7 +23,7 @@ function expandBoxes(boxes) {
 /**
  * Packs centimetre-sized boxes into a metre-sized vehicle using shelf/layer packing.
  */
-export function optimize(vehicle = {}, boxes = []) {
+function shelfPacking(vehicle = {}, boxes = []) {
   // All placement coordinates and dimensions below are centimetres.
   const vehicleLength = Math.max(0, Number(vehicle.length) * 100);
   const vehicleWidth = Math.max(0, Number(vehicle.width) * 100);
@@ -122,4 +122,14 @@ export function optimize(vehicle = {}, boxes = []) {
     totalWeight,
     fits: rejected.length === 0,
   };
+}
+
+// Strategy pattern: future algorithms (e.g. best-fit or priority-first) can
+// be registered without changing CargoInputForm.
+export const packingStrategies = Object.freeze({ shelf: shelfPacking });
+
+export function optimize(vehicle = {}, boxes = [], strategy = "shelf") {
+  const pack = packingStrategies[strategy];
+  if (!pack) throw new Error(`Unknown packing strategy: ${strategy}`);
+  return pack(vehicle, boxes);
 }

@@ -11,15 +11,12 @@ function numericFactor(label, value, unit, points, maxPoints) {
   };
 }
 
-/**
- * Calculates urgency using five factors whose maximum values total 100.
- * Null values represent missing information and never add points.
- */
+/** Strategy pattern: urgency scoring policies can be exchanged by key. */
 /**
  * @param {{daysWithoutFood?: number|null, waterLevelFt?: number|null, peopleCount?: number|null,
  * childrenPresent?: boolean|null, elderlyPresent?: boolean|null, distanceFromAidKm?: number|null}} [input]
  */
-export function calculateUrgency({
+function ruleBasedUrgency({
   daysWithoutFood,
   waterLevelFt,
   peopleCount,
@@ -91,4 +88,15 @@ export function calculateUrgency({
       numericFactor("Distance from Aid", distanceFromAidKm, "km", distancePoints, 15),
     ],
   };
+}
+
+export const urgencyStrategies = Object.freeze({ ruleBased: ruleBasedUrgency });
+
+/**
+ * Calculates urgency using the selected strategy. Null values never add risk.
+ */
+export function calculateUrgency(input = {}, strategy = "ruleBased") {
+  const scorer = urgencyStrategies[strategy];
+  if (!scorer) throw new Error(`Unknown urgency strategy: ${strategy}`);
+  return scorer(input);
 }

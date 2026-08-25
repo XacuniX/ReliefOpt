@@ -8,13 +8,10 @@ import {
   remove,
   seedOnce,
 } from "../lib/db";
-import {
-  commitAuthoritativeMutation,
-  fetchSnapshot,
-  submitProposal,
-} from "../lib/syncApi";
 import { AuthApiError } from "../lib/authApi";
 import { createReportReference } from "../lib/reportReference";
+import { syncFacade } from "../lib/syncFacade";
+import { assertTransition } from "../lib/workflowState";
 import { useAuth } from "./AuthContext";
 import { useOffline } from "./OfflineContext";
 
@@ -208,7 +205,7 @@ export function DataProvider({ children }) {
 
   async function pullSnapshot({ force = false } = {}) {
     if (!accessToken || isOffline || navigator.onLine === false) return false;
-    const snapshot = await fetchSnapshot(accessToken);
+    const snapshot = await syncFacade.pullSnapshot(accessToken);
     const applied = await acceptSnapshot(snapshot, { force });
     if (!applied) setLastSyncedAt(new Date().toISOString());
     return applied;
@@ -223,7 +220,7 @@ export function DataProvider({ children }) {
       for (const entry of activeOutbox(outbox)) {
         replaceOutbox((items) => items.map((item) => item.id === entry.id ? { ...item, status: "Syncing" } : item));
         try {
-          const result = await submitProposal(accessToken, {
+          const result = await syncFacade.submitProposal(accessToken, {
             id: entry.id,
             type: entry.type,
             payload: entry.payload,
@@ -277,6 +274,14 @@ export function DataProvider({ children }) {
   }, [state.syncQueue.length, ready, accessToken, isOffline]);
 
   async function mutate(type, payload) {
+    if (type === "UPDATE_REPORT" && payload.patch?.status) {
+      const report = stateRef.current.reports.find((item) => item.id === payload.id);
+      if (report) assertTransition("report", report.status, payload.patch.status);
+    }
+    if (type === "UPDATE_TASK" && payload.patch?.status) {
+      const task = stateRef.current.tasks.find((item) => item.id === payload.id);
+      if (task) assertTransition("task", task.status, payload.patch.status);
+    }
     const entry = {
       id: crypto.randomUUID(),
       type,
@@ -291,7 +296,7 @@ export function DataProvider({ children }) {
     const direct = currentUser?.role === "central_admin" && !isOffline && navigator.onLine !== false;
     if (direct) {
       try {
-        await commitAuthoritativeMutation(accessToken, type, payload);
+        await syncFacade.commitMutation(accessToken, type, payload);
         await pullSnapshot();
         return { status: "Accepted", id: entry.id };
       } catch (error) {
