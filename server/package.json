@@ -12,6 +12,7 @@
     "migrate": "node src/migrate.js",
     "seed:demo": "node src/seed-demo.js",
     "test": "node --test",
+    "test:coverage": "node --experimental-test-coverage --test",
     "test:postgres": "node --test test/postgres.test.js",
     "e2e": "node src/e2e-server.js"
   },

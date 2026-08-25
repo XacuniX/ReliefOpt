@@ -4,14 +4,19 @@ function getMaxWeight(vehicle) {
 }
 
 function expandBoxes(boxes) {
+  const occurrences = new Map();
   return boxes.flatMap((box) => {
     const requestedQuantity = Number(box.quantity);
     const quantity = Number.isFinite(requestedQuantity)
       ? Math.max(0, Math.floor(requestedQuantity))
       : 1;
+    const baseId = box.id || box.name || "box";
+    const occurrence = (occurrences.get(baseId) || 0) + 1;
+    occurrences.set(baseId, occurrence);
+    const uniqueBaseId = occurrence === 1 ? baseId : `${baseId}-${occurrence}`;
     return Array.from({ length: quantity }, (_, index) => ({
       ...box,
-      boxId: `${box.id || box.name || "box"}-${index + 1}`,
+      boxId: `${uniqueBaseId}-${index + 1}`,
       length: Number(box.length),
       width: Number(box.width),
       height: Number(box.height),

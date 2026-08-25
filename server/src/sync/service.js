@@ -3,6 +3,7 @@ import {
   createReportReference,
   getReportReferencePrefix,
 } from "../../../src/lib/reportReference.js";
+import { canTransition } from "../../../src/lib/workflowState.js";
 
 const TYPES = new Set([
   "ADD_REPORT",
@@ -277,6 +278,14 @@ async function requireChanged(result) {
     );
 }
 
+async function requireAssignedTeam(db, teamId) {
+  if (!teamId) return;
+  const result = await db.query("SELECT id FROM teams WHERE id = $1", [teamId]);
+  if (result.rowCount !== 1) {
+    throw new SyncError(400, "INVALID_TEAM", "The selected team does not exist.");
+  }
+}
+
 async function insertStockLog(db, entry, itemId, actor) {
   if (!entry) return;
   await db.query(
@@ -368,6 +377,7 @@ export async function applyMutation(db, type, payload, actor) {
         { ...payload, time: reportedAt },
         existingReferences.rows,
       );
+      await requireAssignedTeam(db, payload.assignedTeamId);
       await db.query(
         `INSERT INTO reports (
            id, type, district, latitude, longitude, severity, status, submitted_by_id,
@@ -406,6 +416,9 @@ export async function applyMutation(db, type, payload, actor) {
     case "UPDATE_REPORT": {
       const patch = { ...payload.patch };
       if (Object.hasOwn(patch, "assignedTeamId")) patch.assignedTeamId ||= null;
+      if (Object.hasOwn(patch, "assignedTeamId")) {
+        await requireAssignedTeam(db, patch.assignedTeamId);
+      }
       if (Object.hasOwn(patch, "severity"))
         patch.severity = numberValue(patch.severity, "Severity", {
           min: 1,
@@ -424,6 +437,20 @@ export async function applyMutation(db, type, payload, actor) {
           "Affected count",
           { min: 0, integer: true },
         );
+      if (Object.hasOwn(patch, "status")) {
+        const current = await db.query(
+          "SELECT status FROM reports WHERE id = $1",
+          [payload.id],
+        );
+        await requireChanged(current);
+        if (!canTransition("report", current.rows[0].status, patch.status)) {
+          throw new SyncError(
+            400,
+            "INVALID_STATE_TRANSITION",
+            `Cannot move report from '${current.rows[0].status}' to '${patch.status}'.`,
+          );
+        }
+      }
       const query = updateSql("reports", "id", payload.id, patch, {
         status: "status",
         assignedTeamId: "assigned_team_id",
