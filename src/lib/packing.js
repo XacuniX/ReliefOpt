@@ -1,14 +1,6 @@
-const fallbackMaxWeights = [
-  { match: "heavy hauler", maxWeight: 8000 },
-  { match: "cargo van", maxWeight: 1200 },
-  { match: "relief truck", maxWeight: 3000 },
-];
-
 function getMaxWeight(vehicle) {
-  if (Number.isFinite(Number(vehicle.maxWeight))) return Number(vehicle.maxWeight);
-
-  const name = String(vehicle.name || "").toLowerCase();
-  return fallbackMaxWeights.find((entry) => name.includes(entry.match))?.maxWeight || 3000;
+  const value = Number(vehicle.maxWeight);
+  return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 function expandBoxes(boxes) {
@@ -49,13 +41,22 @@ export function optimize(vehicle = {}, boxes = []) {
   let rowDepth = 0;
   let layerHeight = 0;
 
-  const expandedBoxes = expandBoxes(boxes).sort(
+  const invalidQuantities = boxes.filter((box) => !Number.isInteger(Number(box.quantity)) || Number(box.quantity) <= 0);
+  for (const box of invalidQuantities) {
+    rejected.push({ ...box, boxId: `${box.id || box.name || "box"}-invalid`, reason: "Quantity must be a positive integer." });
+  }
+  const expandedBoxes = expandBoxes(boxes.filter((box) => !invalidQuantities.includes(box))).sort(
     (a, b) => (b.length * b.width * b.height) - (a.length * a.width * a.height)
   );
 
   for (const box of expandedBoxes) {
     if (![box.length, box.width, box.height].every((dimension) => Number.isFinite(dimension) && dimension > 0)) {
       rejected.push({ ...box, reason: "Box dimensions must be positive numbers." });
+      continue;
+    }
+
+    if (!Number.isFinite(box.weight) || box.weight < 0) {
+      rejected.push({ ...box, reason: "Weight must be zero or a positive number." });
       continue;
     }
 

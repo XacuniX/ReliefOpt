@@ -8,6 +8,8 @@ const statusColors = {
   Syncing: "blue",
   Done: "green",
   Failed: "red",
+  "Pending Approval": "amber",
+  Rejected: "red",
 };
 
 function describeEntry(entry) {
@@ -81,6 +83,11 @@ export default function OfflineQueue({ queue = [], onRetryAll, lastSyncedAt }) {
                   timeStyle: "short",
                 })}
               </p>
+              {entry.rejectionReason && (
+                <p role="alert" className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  {entry.rejectionReason}
+                </p>
+              )}
             </div>
           </div>
         ))

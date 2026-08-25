@@ -1,91 +1,137 @@
-import { createContext, useContext, useState } from "react";
-import { users } from "../mockData";
+import { createContext, useContext, useEffect, useState } from "react";
+import { AuthApiError, fetchCurrentUser, loginWithPassword } from "../lib/authApi";
+import {
+  clearCachedSession,
+  readCachedSession,
+  sessionFromAccessToken,
+  writeCachedSession,
+} from "../lib/authSession";
 
 const AuthContext = createContext(null);
 
-const SESSION_KEY = "reliefopt-session";
-const DEMO_PASSWORD = "reliefopt";
-
-function readSession() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
+export class OfflineLoginError extends Error {
+  constructor() {
+    super("An internet connection is required for a fresh login.");
+    this.name = "OfflineLoginError";
+    this.code = "OFFLINE_LOGIN_UNAVAILABLE";
   }
 }
-
-function writeSession(user) {
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  } catch {
-    // Storage unavailable — session just won't survive a refresh.
-  }
-}
-
-function clearSession() {
-  try {
-    localStorage.removeItem(SESSION_KEY);
-  } catch {
-    // Ignore — nothing to clean up.
-  }
-}
-
-const defaultAdmin = users.find((u) => u.role === "central_admin");
 
 function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(() => {
-    const session = readSession();
-    if (session?.id) {
-      const fresh = users.find((u) => u.id === session.id);
-      if (fresh && fresh.status !== "Inactive") {
-        return { id: fresh.id, name: fresh.name, role: fresh.role };
+  const [currentUser, setCurrentUser] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+
+  function acceptSession(session, serverUser) {
+    setAccessToken(session.accessToken);
+    setCurrentUser(serverUser || session.user);
+    setIsAuthenticated(true);
+  }
+
+  function clearSession() {
+    clearCachedSession();
+    setAccessToken(null);
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreSession() {
+      const cached = readCachedSession();
+      if (!cached) {
+        clearCachedSession();
+        if (!cancelled) clearSession();
+        return;
+      }
+
+      if (navigator.onLine === false) {
+        if (!cancelled) acceptSession(cached);
+        return;
+      }
+
+      try {
+        const { user } = await fetchCurrentUser(cached.accessToken);
+        if (!cancelled) acceptSession(cached, user);
+      } catch (error) {
+        if (error instanceof AuthApiError && error.code === "NETWORK_UNAVAILABLE") {
+          if (!cancelled) acceptSession(cached);
+        } else if (!cancelled) {
+          clearSession();
+        }
       }
     }
-    return { id: defaultAdmin.id, name: defaultAdmin.name, role: defaultAdmin.role };
-  });
-  const [isAuthenticated, setIsAuthenticated] = useState(() => !!readSession());
 
-  /**
-   * Real login: look the user up by username, verify the demo password, and
-   * refuse deactivated accounts. Returns true on success, false on failure.
-   * Demo switcher compatibility: passing a role string ("field_worker", ...)
-   * or a user object logs that user in without a password check.
-   */
-  const login = (username, password) => {
-    let user;
-    if (username && typeof username === "object" && username.id) {
-      user = users.find((u) => u.id === username.id) || null;
-    } else if (["field_worker", "warehouse_manager", "central_admin"].includes(username)) {
-      // Legacy demo-switcher call: login("field_worker") → first active user in that role.
-      user = users.find((u) => u.role === username && u.status !== "Inactive") || null;
-    } else {
-      user = users.find((u) => u.username === username) || null;
+    async function initialize() {
+      await restoreSession();
+      if (!cancelled) setAuthReady(true);
     }
-    if (!user) return false;
-    if (user.status === "Inactive") return false;
-    if (password && password !== DEMO_PASSWORD) return false;
 
-    const sessionUser = { id: user.id, name: user.name, role: user.role };
-    setCurrentUser(sessionUser);
-    setIsAuthenticated(true);
-    writeSession(sessionUser);
-    return sessionUser;
-  };
+    function handleOnline() {
+      void restoreSession();
+    }
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    setCurrentUser({ id: defaultAdmin.id, name: defaultAdmin.name, role: defaultAdmin.role });
+    void initialize();
+    window.addEventListener("online", handleOnline);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken) return undefined;
+    const session = sessionFromAccessToken(accessToken);
+    if (!session) {
+      clearSession();
+      return undefined;
+    }
+    const delay = Math.max(0, Date.parse(session.expiresAt) - Date.now());
+    const timer = window.setTimeout(() => clearSession(), delay);
+    return () => window.clearTimeout(timer);
+  }, [accessToken]);
+
+  async function login(username, password) {
+    if (navigator.onLine === false) throw new OfflineLoginError();
+    const response = await loginWithPassword(username, password);
+    const session = writeCachedSession(response.accessToken);
+    const tokenSession = sessionFromAccessToken(response.accessToken);
+    if (
+      !tokenSession ||
+      tokenSession.user.id !== response.user.id ||
+      tokenSession.user.role !== response.user.role
+    ) {
+      clearSession();
+      throw new AuthApiError("Central Command returned an invalid session.", {
+        code: "INVALID_SESSION",
+      });
+    }
+    acceptSession(session, response.user);
+    return response.user;
+  }
+
+  async function refreshCurrentUser() {
+    if (!accessToken) return null;
+    try {
+      const { user } = await fetchCurrentUser(accessToken);
+      setCurrentUser(user);
+      return user;
+    } catch (error) {
+      if (error instanceof AuthApiError && error.code === "INVALID_SESSION") clearSession();
+      throw error;
+    }
+  }
+
+  function logout() {
     clearSession();
-  };
-
-  const setRole = (role) => {
-    setCurrentUser((prev) => ({ ...prev, role }));
-    writeSession({ ...currentUser, role });
-  };
+  }
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated, setRole, login, logout }}>
+    <AuthContext.Provider
+      value={{ currentUser, accessToken, isAuthenticated, authReady, login, logout, refreshCurrentUser }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -93,9 +139,7 @@ function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 }
 

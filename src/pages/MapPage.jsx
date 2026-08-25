@@ -7,7 +7,7 @@ import OfflineBanner from "../components/map/OfflineBanner";
 import { useData } from "../context/DataContext";
 
 export default function MapPage() {
-  const { mapPins } = useData();
+  const { mapPins, reports, teams, warehouses } = useData();
   const [filters, setFilters] = useState({
     teams: true,
     warehouses: true,
@@ -21,10 +21,17 @@ export default function MapPage() {
   }
 
   return (
-    <div className="-mt-14 md:-mt-0 relative">
+    <div className="relative -m-3 sm:-m-6">
+      <h1 className="sr-only">Relief operations map</h1>
       <OfflineBanner />
       <MapView>
-        <Markers filters={filters} mapPins={mapPins} />
+        <Markers
+          filters={filters}
+          mapPins={mapPins}
+          reports={reports}
+          teams={teams}
+          warehouses={warehouses}
+        />
         <MapFilters filters={filters} onFilterChange={handleFilterChange} />
       </MapView>
       <VoiceReportModal />

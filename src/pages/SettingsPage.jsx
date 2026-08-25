@@ -1,21 +1,20 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Badge, Button, Card, Toast } from "../components/ui";
+import { useData } from "../context/DataContext";
+import { usePreferences } from "../context/PreferencesContext";
 import { useTheme } from "../context/ThemeContext";
-import {
-  clearTileCache,
-  getTileCacheLimit,
-  getTileCacheSize,
-  setTileCacheLimit,
-} from "../lib/tileCache";
+import { Badge, Button, Card, Toast } from "../components/ui";
+import { clearDomainCache } from "../lib/db";
+import { clearTileCache, getTileCacheLimit, getTileCacheSize, setTileCacheLimit } from "../lib/tileCache";
 
 export default function SettingsPage() {
   const { currentUser } = useAuth();
+  const { lastSyncedAt, refreshSnapshot } = useData();
   const { theme, setTheme } = useTheme();
-  const [language, setLanguage] = useState("English");
+  const { language, notificationSound, setLanguage, setNotificationSound, t } = usePreferences();
   const [cacheSize, setCacheSize] = useState(50);
   const [storedTileSize, setStoredTileSize] = useState(0);
-  const [notifSound, setNotifSound] = useState(true);
+  const [clearing, setClearing] = useState(false);
   const [toast, setToast] = useState(null);
 
   const roleColors = { central_admin: "navy", warehouse_manager: "amber", field_worker: "teal" };
@@ -27,39 +26,39 @@ export default function SettingsPage() {
 
   async function changeCacheSize(value) {
     setCacheSize(value);
-    const remainingBytes = await setTileCacheLimit(value * 1024 * 1024);
-    setStoredTileSize(remainingBytes);
+    setStoredTileSize(await setTileCacheLimit(value * 1024 * 1024));
   }
 
   async function clearCache() {
+    setClearing(true);
     try {
-      // Keep the user's tile-cache preference while clearing cached data.
-      const keys = Object.keys(localStorage).filter(
-        (k) => k.startsWith("reliefopt-") && k !== "reliefopt-tile-cache-limit",
-      );
-      keys.forEach((k) => localStorage.removeItem(k));
+      await clearDomainCache({ preserveOutbox: true });
+      localStorage.removeItem("reliefopt-shadow-state");
       const tilesCleared = await clearTileCache();
       setStoredTileSize(0);
+      const refreshed = await refreshSnapshot({ force: true }).catch(() => false);
       setToast({
         type: "success",
-        message: `Cache cleared (${keys.length} local entries${tilesCleared ? " and map tiles" : ""} removed).`,
+        message: `Domain cache, drafts${tilesCleared ? ", and map tiles" : ""} cleared. Your session, preferences, and proposal outbox were preserved${refreshed ? " and server data was reloaded" : ""}.`,
       });
     } catch {
       setToast({ type: "error", message: "Failed to clear cache." });
+    } finally {
+      setClearing(false);
+      setTimeout(() => setToast(null), 5000);
     }
-    setTimeout(() => setToast(null), 3000);
   }
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">{t("settings")}</h1>
 
       <section className="mb-8">
-        <h2 className="text-lg font-bold mb-4">Profile</h2>
+        <h2 className="mb-4 text-lg font-bold">{t("profile")}</h2>
         <Card>
-          <div className="flex items-center gap-4 mb-4">
-            <span className="h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold">
-              {currentUser.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+          <div className="mb-4 flex items-center gap-4">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+              {currentUser.name.split(" ").map((word) => word[0]).join("").slice(0, 2).toUpperCase()}
             </span>
             <div>
               <p className="font-bold">{currentUser.name}</p>
@@ -71,90 +70,54 @@ export default function SettingsPage() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-lg font-bold mb-4">Preferences</h2>
+        <h2 className="mb-4 text-lg font-bold">{t("preferences")}</h2>
         <Card>
-          <div className="mb-4 text-sm">
-            <label className="flex items-center justify-between">
-              <span>Theme</span>
-              <select
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                className="rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="system">System</option>
-              </select>
-            </label>
-          </div>
+          <label className="mb-4 flex items-center justify-between text-sm">
+            <span>Theme</span>
+            <select value={theme} onChange={(event) => setTheme(event.target.value)} className="rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="system">System</option>
+            </select>
+          </label>
 
           <div className="mb-4 text-sm">
-            <label className="flex items-center justify-between">
-              <span>Language</span>
-              <div className="flex rounded-md border overflow-hidden">
-                <button
-                  type="button"
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${language === "English" ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-accent"}`}
-                  onClick={() => setLanguage("English")}
-                >
-                  English
-                </button>
-                <button
-                  type="button"
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${language === "Bangla" ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-accent"}`}
-                  onClick={() => setLanguage("Bangla")}
-                >
-                  বাংলা
-                </button>
+            <div className="flex items-center justify-between">
+              <span>{t("language")}</span>
+              <div className="flex overflow-hidden rounded-md border">
+                {[["English", "English"], ["Bangla", "বাংলা"]].map(([value, label]) => (
+                  <button key={value} type="button" className={`px-3 py-1.5 text-xs font-semibold transition-colors ${language === value ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-accent"}`} onClick={() => setLanguage(value)}>{label}</button>
+                ))}
               </div>
-            </label>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">The selected language is applied to primary navigation and settings labels.</p>
           </div>
 
-          <div className="mb-4 text-sm">
-            <label>
-              <span className="block mb-1.5">Map tile cache size: {cacheSize} MB</span>
-              <input
-                type="range"
-                min="10"
-                max="200"
-                step="10"
-                value={cacheSize}
-                onChange={(e) => changeCacheSize(Number(e.target.value))}
-                className="w-full accent-primary"
-              />
-              <span className="mt-1 block text-xs text-muted-foreground">
-                Currently stored: {(storedTileSize / (1024 * 1024)).toFixed(1)} MB. Older tiles are removed when this limit is exceeded.
-              </span>
-            </label>
-          </div>
+          <label className="mb-4 block text-sm">
+            <span className="mb-1.5 block">Map tile cache size: {cacheSize} MB</span>
+            <input type="range" min="10" max="200" step="10" value={cacheSize} onChange={(event) => changeCacheSize(Number(event.target.value))} className="w-full accent-primary" />
+            <span className="mt-1 block text-xs text-muted-foreground">Currently stored: {(storedTileSize / (1024 * 1024)).toFixed(1)} MB. Older tiles are removed when this limit is exceeded.</span>
+          </label>
 
-          <div className="text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={notifSound}
-                onChange={(e) => setNotifSound(e.target.checked)}
-                className="accent-primary"
-              />
-              Notification sounds
-            </label>
-          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={notificationSound} onChange={(event) => setNotificationSound(event.target.checked)} className="accent-primary" />
+            {t("notificationSounds")}
+          </label>
         </Card>
       </section>
 
       <section className="mb-8">
-        <h2 className="text-lg font-bold mb-4">About</h2>
+        <h2 className="mb-4 text-lg font-bold">{t("about")}</h2>
         <Card>
-          <p className="text-sm mb-2"><strong>App Version:</strong> v0.0.1</p>
-          <p className="text-sm mb-2"><strong>Last Sync:</strong> {new Date().toLocaleString()}</p>
-          <p className="text-sm mb-4"><strong>Cache Status:</strong> Active ({(storedTileSize / (1024 * 1024)).toFixed(1)} MB of {cacheSize} MB)</p>
-          <Button variant="outline" size="sm" onClick={clearCache}>Clear Cache</Button>
+          <p className="mb-2 text-sm"><strong>App Version:</strong> v0.0.1</p>
+          <p className="mb-2 text-sm"><strong>{t("lastSync")}:</strong> {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : "Not yet synchronized"}</p>
+          <p className="mb-4 text-sm"><strong>Cache Status:</strong> Active ({(storedTileSize / (1024 * 1024)).toFixed(1)} MB of {cacheSize} MB)</p>
+          <Button variant="outline" size="sm" onClick={clearCache} disabled={clearing}>{clearing ? "Clearing…" : t("clearCache")}</Button>
+          <p className="mt-2 text-xs text-muted-foreground">Clears authoritative cached data, drafts, and map tiles. It preserves your signed-in session, preferences, and proposal outbox, then reloads server data when online.</p>
         </Card>
       </section>
 
-      {toast && (
-        <Toast type={toast.type} message={toast.message} onDismiss={() => setToast(null)} />
-      )}
+      {toast && <Toast type={toast.type} message={toast.message} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

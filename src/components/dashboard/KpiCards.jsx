@@ -1,32 +1,58 @@
+import { AlertCircle, Hourglass, Package, Satellite, ShieldCheck, Siren } from "lucide-react";
+import { useData } from "../../context/DataContext";
+import { useOffline } from "../../context/OfflineContext";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../ui";
-import { reports, teams, alerts, inventory } from "../../mockData";
-
-const cards = [
-  { label: "Active Incidents", value: reports.filter((r) => r.status !== "Resolved").length, icon: "🚨", trend: "up" },
-  { label: "Deployed Teams", value: teams.filter((t) => t.status === "Deployed").length, icon: "🪖", trend: "up" },
-  { label: "Critical Alerts", value: alerts.filter((a) => a.severity === "Critical").length, icon: "🔴", trend: "up" },
-  { label: "Total Supply Items", value: inventory.reduce((sum, i) => sum + i.qty, 0), icon: "📦", trend: "up" },
-  { label: "Pending Requests", value: reports.filter((r) => r.status === "Pending").length, icon: "⏳", trend: "down" },
-  { label: "Offline Nodes", value: 2, icon: "📡", trend: "down" },
-];
 
 export default function KpiCards() {
+  const { reports, teams, notifications, inventory } = useData();
+  const { isOffline } = useOffline();
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const cards = [
+    { label: "Active Incidents", value: reports.filter((report) => report.status !== "Resolved").length, icon: Siren },
+    { label: "Deployed Teams", value: teams.filter((team) => team.status === "Deployed").length, icon: ShieldCheck },
+    { label: "Critical Alerts", value: notifications.filter((item) => item.type === "Critical" && !item.read).length, icon: AlertCircle },
+    { label: "Total Supply Items", value: inventory.reduce((sum, item) => sum + Number(item.qty || 0), 0), icon: Package },
+    { label: "Pending Requests", value: reports.filter((report) => report.status === "Pending").length, icon: Hourglass },
+    { label: "Offline Nodes", value: teams.filter((team) => team.status === "Offline").length + (isOffline ? 1 : 0), icon: Satellite },
+  ];
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-      {cards.map(({ label, value, icon, trend }) => (
-        <Card key={label}>
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-2xl leading-none" aria-hidden="true">{icon}</span>
-              <p className="text-xl font-bold mt-2 mb-1">{value.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{label}</p>
-            </div>
-            <span className={`text-sm font-bold ${trend === "up" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-              {trend === "up" ? "▲" : "▼"}
-            </span>
-          </div>
+      {cards.map(({ label, value, icon: Icon }) => {
+        const isPendingRequests = label === "Pending Requests";
+        const openPendingRequests = () => {
+          if (!isPendingRequests) return;
+          if (currentUser?.role === "central_admin") {
+            window.dispatchEvent(new CustomEvent("reliefopt:open-approvals"));
+          } else {
+            navigate("/reports");
+          }
+        };
+
+        return (
+        <Card
+          key={label}
+          className={isPendingRequests ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring" : undefined}
+          onClick={isPendingRequests ? openPendingRequests : undefined}
+          onKeyDown={isPendingRequests ? (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openPendingRequests();
+            }
+          } : undefined}
+          role={isPendingRequests ? "button" : undefined}
+          tabIndex={isPendingRequests ? 0 : undefined}
+          aria-label={isPendingRequests ? "Open pending requests" : undefined}
+        >
+          <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+          <p className="text-xl font-bold mt-2 mb-1">{value.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{label}</p>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }

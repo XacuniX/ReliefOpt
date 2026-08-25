@@ -1,14 +1,6 @@
 import { Marker, Popup, Circle } from "react-leaflet";
 import L from "leaflet";
-import { teams, supplyDrops, cityCoords, reports } from "../../mockData";
-
-const warehouseLocations = {
-  "Warehouse A": [23.8103, 90.4125],
-  "Warehouse B": [23.7500, 90.3800],
-  "Warehouse C": [23.8200, 90.4500],
-  "Warehouse D": [23.7000, 90.3500],
-  "Warehouse E": [23.7800, 90.5000],
-};
+import { supplyDrops, cityCoords } from "../../mockData";
 
 function createColoredIcon(color) {
   return L.divIcon({
@@ -31,7 +23,7 @@ const severityColors = {
   5: { fill: "rgba(239,68,68,0.55)", stroke: "#ef4444" },
 };
 
-export default function Markers({ filters, mapPins }) {
+export default function Markers({ filters, mapPins, teams, reports, warehouses }) {
   const severityRadius = { 1: 1000, 2: 2000, 3: 4000, 4: 6000, 5: 10000 };
 
   return (
@@ -60,17 +52,21 @@ export default function Markers({ filters, mapPins }) {
         })}
 
       {filters.warehouses &&
-        Object.entries(warehouseLocations).map(([name, coords]) => (
-          <Marker key={`wh-${name}`} position={coords} icon={warehouseIcon}>
+        warehouses.map((warehouse) => {
+          const coords = Number.isFinite(warehouse.lat) && Number.isFinite(warehouse.lng)
+            ? [warehouse.lat, warehouse.lng]
+            : cityCoords[warehouse.name];
+          if (!coords) return null;
+          return <Marker key={`wh-${warehouse.id}`} position={coords} icon={warehouseIcon}>
             <Popup>
               <div className="text-sm">
-                <strong>{name}</strong>
+                <strong>{warehouse.name}</strong>
                 <br />
                 ReliefOpt supply hub
               </div>
             </Popup>
-          </Marker>
-        ))}
+          </Marker>;
+        })}
 
       {filters.supplyDrops &&
         supplyDrops.map((drop) => {
@@ -121,7 +117,7 @@ export default function Markers({ filters, mapPins }) {
                     <br />
                     Severity: {report.severity}/5
                     <br />
-                    Affected: {report.affectedCount.toLocaleString()}
+                    Affected: {Number(report.affectedCount || 0).toLocaleString()}
                     <br />
                     Status: {report.status}
                   </div>
@@ -130,10 +126,13 @@ export default function Markers({ filters, mapPins }) {
             );
           })}
 
-      {mapPins.map((pin, i) => (
+      {mapPins.map((pin) => {
+        const position = pin.position || (Number.isFinite(pin.lat) && Number.isFinite(pin.lng) ? [pin.lat, pin.lng] : null);
+        if (!position) return null;
+        return (
         <Marker
-          key={`voice-${i}`}
-          position={pin.position}
+          key={`voice-${pin.id}`}
+          position={position}
           icon={createColoredIcon("#ef4444")}
         >
           <Popup>
@@ -142,15 +141,16 @@ export default function Markers({ filters, mapPins }) {
               <br />
               Location: {pin.location}
               <br />
-              Water Level: {pin.waterLevel}
+              Water Level: {pin.waterLevel || (pin.waterLevelFt != null ? `${pin.waterLevelFt}ft` : "—")}
               <br />
-              People Stranded: {pin.peopleCount}
+              People Stranded: {pin.peopleCount ?? "—"}
               <br />
-              Children Present: {pin.childrenPresent}
+              Children Present: {typeof pin.childrenPresent === "boolean" ? (pin.childrenPresent ? "Yes" : "No") : pin.childrenPresent}
             </div>
           </Popup>
         </Marker>
-      ))}
+        );
+      })}
     </>
   );
 }

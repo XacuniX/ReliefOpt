@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": [
+    "src/lib/urgency.js",
+    "src/lib/extract.js",
+    "src/lib/packing.js",
+    "src/lib/rbac.js",
+    "src/lib/p2p.js",
+    "src/lib/contracts.js"
+  ]
+}

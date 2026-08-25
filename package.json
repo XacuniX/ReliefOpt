@@ -4,11 +4,29 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "test": "node --test test/*.test.js && npm --prefix server test",
+    "test:e2e": "playwright test",
+    "lint": "eslint .",
+    "format:check": "prettier --check eslint.config.js playwright.config.js vite.config.js e2e test",
+    "typecheck": "tsc -p jsconfig.json",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run build",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:android": "vite build --mode android",
+    "preview": "vite preview",
+    "server:dev": "npm --prefix server run dev",
+    "server:start": "npm --prefix server run start",
+    "server:migrate": "npm --prefix server run migrate",
+    "server:seed:demo": "npm --prefix server run seed:demo",
+    "server:test": "npm --prefix server run test",
+    "android:download-model": "node scripts/download-android-whisper-model.mjs",
+    "android:sync-assets": "node scripts/sync-android-assets.mjs",
+    "android:sync": "npm run build:android && npx cap sync android && npm run android:sync-assets",
+    "android:build": "npm run android:sync && cd android && gradlew.bat assembleDebug"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@huggingface/transformers": "^4.2.0",
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-collapsible": "^1.1.20",
@@ -31,6 +49,16 @@
     "vite": "^6.4.3"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
+    "eslint": "^10.9.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.4",
+    "fake-indexeddb": "^6.2.5",
+    "globals": "^17.11.0",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2",
     "vite-plugin-pwa": "^1.3.0"
   }
 }

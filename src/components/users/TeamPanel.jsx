@@ -21,6 +21,7 @@ export default function TeamPanel({ teamList, userList }) {
           const members = users.filter(
             (user) => user.teamId === team.id || user.team === team.name
           );
+          const leader = users.find((user) => user.id === team.leaderId)?.name || team.leader;
           return (
             <Card
               key={team.id}
@@ -34,8 +35,8 @@ export default function TeamPanel({ teamList, userList }) {
                 <h3 className="text-base font-bold">{team.name}</h3>
                 <Badge color={teamColors[team.status]} text={team.status} />
               </div>
-              <p className="mt-3 mb-1"><strong>Leader:</strong> {team.leader}</p>
-              <p className="my-1"><strong>Members:</strong> {team.memberCount}</p>
+              <p className="mt-3 mb-1"><strong>Leader:</strong> {leader || "Unassigned"}</p>
+              <p className="my-1"><strong>Members:</strong> {members.length}</p>
               <p className="my-1"><strong>Location:</strong> {team.location}</p>
               <p className="text-muted-foreground text-sm">{team.activeTask}</p>
               {expanded && (

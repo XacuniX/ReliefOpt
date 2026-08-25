@@ -5,6 +5,8 @@ import { useData } from "../../context/DataContext";
 import {
   startAutoHost,
   startAutoGuest,
+  createHost,
+  createGuest,
   offerToText,
   acceptOfferFromText,
   acceptAnswerFromText,
@@ -17,7 +19,7 @@ const STATUS_COLORS = {
 };
 
 export default function PeerPanel() {
-  const { syncQueue, applyRemoteChange } = useData();
+  const { authoritativeSnapshotForPeer, applyPeerSnapshot } = useData();
   const [status, setStatus] = useState("disconnected");
   const [mode, setMode] = useState("auto"); // "auto" | "manual"
   const [log, setLog] = useState([]);
@@ -55,14 +57,19 @@ export default function PeerPanel() {
     });
   }
 
-  function handleMessage(data) {
+  async function handleMessage(data) {
     appendLog({
       text: `Received: ${data.type ?? "message"} (${JSON.stringify(data).slice(0, 80)})`,
       tone: "info",
     });
-    if (data?.type === "SYNC_PUSH" && Array.isArray(data.entries)) {
-      data.entries.forEach((entry) => applyRemoteChange(entry));
-      appendLog({ text: `Applied ${data.entries.length} remote change(s)`, tone: "good" });
+    if (data?.type === "SNAPSHOT_PUSH" && data.snapshot) {
+      const applied = await applyPeerSnapshot(data.snapshot);
+      appendLog({
+        text: applied
+          ? `Applied authoritative snapshot #${data.snapshot.snapshotSeq}`
+          : `Ignored snapshot #${data.snapshot.snapshotSeq} (not newer or not offline)`,
+        tone: applied ? "good" : "info",
+      });
     } else if (data?.type === "PING") {
       controllerRef.current?.send({ type: "PONG", from: "me" });
     } else if (data?.type === "PONG") {
@@ -98,7 +105,7 @@ export default function PeerPanel() {
     controllerRef.current?.disconnect();
     setLog([]);
     setStatus("connecting");
-    const controller = startAutoHost(handleMessage, handleStateChange);
+    const controller = createHost(handleMessage, handleStateChange);
     controllerRef.current = controller;
     const text = await offerToText(controller);
     setLocalDescription(text);
@@ -121,7 +128,7 @@ export default function PeerPanel() {
     try {
       controllerRef.current?.disconnect();
       setStatus("connecting");
-      const controller = startAutoGuest(handleMessage, handleStateChange);
+      const controller = createGuest(handleMessage, handleStateChange);
       controllerRef.current = controller;
       const answer = await acceptOfferFromText(controller, offerText.trim());
       setAnswerText(answer);
@@ -144,37 +151,19 @@ export default function PeerPanel() {
     }
   }
 
-  function handlePushSync() {
+  async function handlePushSnapshot() {
     if (!isConnected) {
       showToast("error", "Not connected yet.");
       return;
     }
-    const entries = syncQueue.length
-      ? syncQueue
-      : [
-          {
-            id: crypto.randomUUID(),
-            actionType: "ADD_REPORT",
-            payload: {
-              id: `r-sync-${Date.now()}`,
-              type: "Other",
-              district: "Mirpur",
-              location: { lat: 23.8041, lng: 90.3665 },
-              severity: 3,
-              status: "Pending",
-              submittedBy: "P2P Sync",
-              time: new Date().toISOString(),
-              description: "Synced report from the P2P demo",
-              affectedCount: 12,
-              urgencyScore: 30,
-            },
-            status: "Queued",
-            timestamp: new Date().toISOString(),
-          },
-        ];
+    const snapshot = authoritativeSnapshotForPeer();
+    if (!snapshot || snapshot.snapshotSeq < 0) {
+      showToast("error", "No authoritative snapshot is cached yet.");
+      return;
+    }
     try {
-      controllerRef.current.send({ type: "SYNC_PUSH", from: "me", entries });
-      appendLog({ text: `Sent SYNC_PUSH with ${entries.length} entr(ies)`, tone: "good" });
+      await controllerRef.current.send({ type: "SNAPSHOT_PUSH", snapshot });
+      appendLog({ text: `Sent authoritative snapshot #${snapshot.snapshotSeq}`, tone: "good" });
     } catch (err) {
       showToast("error", err.message || "Send failed.");
     }
@@ -223,8 +212,8 @@ export default function PeerPanel() {
               <Button variant="outline" onClick={handleSendTest}>
                 Ping
               </Button>
-              <Button variant="outline" onClick={handlePushSync}>
-                Push sync
+              <Button variant="outline" onClick={handlePushSnapshot}>
+                Push snapshot
               </Button>
             </>
           )}
@@ -238,6 +227,13 @@ export default function PeerPanel() {
 
       {mode === "manual" && (
         <div className="space-y-3">
+          {isConnected && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleSendTest}>Ping</Button>
+              <Button variant="outline" onClick={handlePushSnapshot}>Push snapshot</Button>
+              <Button variant="destructive" onClick={handleDisconnect}>Disconnect</Button>
+            </div>
+          )}
           <Button onClick={handleCreateManualOffer} disabled={status === "connecting"}>
             Create offer (Host)
           </Button>
@@ -301,6 +297,9 @@ export default function PeerPanel() {
       )}
 
       <div className="rounded-lg bg-muted/50 border p-3">
+        <p className="text-xs text-muted-foreground mb-3">
+          A connected device may forward its cached authoritative snapshot. Only an offline receiver applies it; pending proposals are never transferred.
+        </p>
         <p className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">
           Live Log
         </p>

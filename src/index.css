@@ -98,6 +98,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+:root {
+  --app-safe-area-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --app-safe-area-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --app-safe-area-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --app-safe-area-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+}
+
+.app-safe-area {
+  padding: var(--app-safe-area-top) var(--app-safe-area-right)
+    var(--app-safe-area-bottom) var(--app-safe-area-left);
+}
+
+.app-safe-area-sidebar {
+  padding-top: var(--app-safe-area-top);
+  padding-bottom: var(--app-safe-area-bottom);
+}
+
 @keyframes dialog-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }

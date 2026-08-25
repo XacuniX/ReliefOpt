@@ -1,5 +1,4 @@
-import { useState } from "react";
-import RoleGate from "../components/RoleGate";
+import { useEffect, useState } from "react";
 import KpiCards from "../components/dashboard/KpiCards";
 import TeamTable from "../components/dashboard/TeamTable";
 import AlertFeed from "../components/dashboard/AlertFeed";
@@ -9,13 +8,22 @@ import { RefreshCw } from "lucide-react";
 import { useData } from "../context/DataContext";
 
 function DashboardContent() {
-  const { ready } = useData();
-  const [lastUpdated, setLastUpdated] = useState(Date.now());
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { ready, lastSyncedAt, refreshSnapshot } = useData();
+  const [lastUpdated, setLastUpdated] = useState(lastSyncedAt ? Date.parse(lastSyncedAt) : Date.now());
+  const [refreshing, setRefreshing] = useState(false);
 
-  function handleRefresh() {
-    setLastUpdated(Date.now());
-    setRefreshKey((k) => k + 1);
+  useEffect(() => {
+    if (lastSyncedAt) setLastUpdated(Date.parse(lastSyncedAt));
+  }, [lastSyncedAt]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refreshSnapshot();
+      setLastUpdated(Date.now());
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function timeAgo(ts) {
@@ -31,14 +39,14 @@ function DashboardContent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto" key={refreshKey}>
+    <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Operations Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">Last Updated: {timeAgo(lastUpdated)}</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={handleRefresh} aria-label="Refresh dashboard">
-          <RefreshCw className="h-5 w-5" />
+        <Button variant="ghost" onClick={handleRefresh} loading={refreshing} aria-label="Refresh dashboard">
+          <RefreshCw className="h-5 w-5" /> Refresh
         </Button>
       </div>
 
@@ -57,9 +65,5 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  return (
-    <RoleGate allowed={["central_admin", "warehouse_manager"]}>
-      <DashboardContent />
-    </RoleGate>
-  );
+  return <DashboardContent />;
 }

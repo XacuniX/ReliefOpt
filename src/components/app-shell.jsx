@@ -10,10 +10,13 @@ import {
   CheckSquare,
   Truck,
   Users,
+  ClipboardCheck,
   Settings,
   Sun,
   Moon,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 import { ROUTES } from "../routes";
 import RoleGate from "./RoleGate";
@@ -22,19 +25,21 @@ import { NotificationPopover } from "./ui/notification-popover";
 import { SmokeyBackground } from "./ui/login-form";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { usePreferences } from "../context/PreferencesContext";
 
 const { Link, useLocation, useNavigate, Outlet } = ReactRouter;
 
 const navItems = [
-  { label: "Dashboard", route: ROUTES.DASHBOARD, icon: LayoutDashboard, roles: null },
-  { label: "Map", route: ROUTES.MAP, icon: Map, roles: null },
-  { label: "Reports", route: ROUTES.REPORTS, icon: FileText, roles: null },
-  { label: "Submit Report", route: ROUTES.SUBMIT_REPORT, icon: Pencil, roles: null },
-  { label: "Inventory", route: ROUTES.INVENTORY, icon: Package, roles: null },
-  { label: "Tasks", route: ROUTES.TASKS, icon: CheckSquare, roles: null },
-  { label: "Cargo", route: ROUTES.CARGO, icon: Truck, roles: ["warehouse_manager", "central_admin"] },
-  { label: "Users", route: ROUTES.USERS, icon: Users, roles: ["central_admin"] },
-  { label: "Settings", route: ROUTES.SETTINGS, icon: Settings, roles: null },
+  { key: "dashboard", route: ROUTES.DASHBOARD, icon: LayoutDashboard, roles: ["central_admin", "warehouse_manager"] },
+  { key: "map", route: ROUTES.MAP, icon: Map, roles: null },
+  { key: "reports", route: ROUTES.REPORTS, icon: FileText, roles: null },
+  { key: "submitReport", route: ROUTES.SUBMIT_REPORT, icon: Pencil, roles: null },
+  { key: "inventory", route: ROUTES.INVENTORY, icon: Package, roles: ["central_admin", "warehouse_manager"] },
+  { key: "tasks", route: ROUTES.TASKS, icon: CheckSquare, roles: null },
+  { key: "cargo", route: ROUTES.CARGO, icon: Truck, roles: ["warehouse_manager", "central_admin"] },
+  { key: "users", route: ROUTES.USERS, icon: Users, roles: ["central_admin"] },
+  { key: "approvals", route: ROUTES.APPROVALS, icon: ClipboardCheck, roles: ["central_admin"] },
+  { key: "settings", route: ROUTES.SETTINGS, icon: Settings, roles: null },
 ];
 
 function NavLink({ item, onNavigate }) {
@@ -43,12 +48,14 @@ function NavLink({ item, onNavigate }) {
     location.pathname === item.route ||
     (item.route === ROUTES.DASHBOARD && location.pathname === "/demo");
   const Icon = item.icon;
+  const { t } = usePreferences();
+  const label = t(item.key);
 
   const link = (
     <Link
       to={item.route}
       onClick={onNavigate}
-      title={item.label}
+      title={label}
       className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all ${
         active
           ? "bg-teal-500/15 font-medium text-teal-200 shadow-[inset_0_0_0_1px_rgba(20,184,166,0.25)]"
@@ -60,7 +67,7 @@ function NavLink({ item, onNavigate }) {
           active ? "text-teal-400" : "text-zinc-400 group-hover:text-teal-300"
         }`}
       />
-      <span className="min-w-0 truncate">{item.label}</span>
+      <span className="min-w-0 truncate">{label}</span>
     </Link>
   );
 
@@ -125,7 +132,7 @@ export function AppShell({ children }) {
   const isDark = resolvedTheme === "dark";
 
   return (
-    <div className="app-gradient relative flex h-screen overflow-hidden text-foreground antialiased">
+    <div className="app-gradient app-safe-area relative flex h-screen overflow-hidden text-foreground antialiased">
       {/* Ambient teal glows */}
       <div
         aria-hidden
@@ -143,15 +150,17 @@ export function AppShell({ children }) {
       </div>
 
       {/* Sidebar */}
-      <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-teal-500/10 bg-[#0b1215]/95 backdrop-blur-md">
+      {mobileOpen && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />}
+      <aside className={`app-safe-area-sidebar fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-teal-500/10 bg-[#0b1215]/95 backdrop-blur-md transition-transform md:static md:z-10 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {/* Brand */}
         <div className="flex h-16 items-center gap-2.5 px-6">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 text-zinc-950 shadow-[0_0_16px_rgba(20,184,166,0.45)]">
             <Package className="h-4 w-4" />
           </div>
-          <span className="text-lg font-semibold tracking-tight text-zinc-50">
+          <span className="flex-1 text-lg font-semibold tracking-tight text-zinc-50">
             Relief<span className="text-teal-400">Opt</span>
           </span>
+          <button type="button" aria-label="Close navigation" className="rounded p-1 text-zinc-300 md:hidden" onClick={() => setMobileOpen(false)}><X className="h-5 w-5" /></button>
         </div>
 
         {/* Navigation */}
@@ -168,14 +177,17 @@ export function AppShell({ children }) {
       {/* Main column */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="relative z-30 flex h-16 shrink-0 items-center justify-end gap-3 border-b border-teal-500/10 bg-background/60 pr-6 backdrop-blur-md">
+        <header className="relative z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-teal-500/10 bg-background/60 px-3 backdrop-blur-md sm:px-6 md:justify-end">
+          <button type="button" aria-label="Open navigation" className="rounded-lg border border-teal-500/20 p-2 md:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></button>
+          <div className="flex min-w-0 items-center gap-2">
           <SyncIndicator />
           <NotificationPopover />
+          </div>
         </header>
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             {children ?? <Outlet />}
           </div>
         </main>

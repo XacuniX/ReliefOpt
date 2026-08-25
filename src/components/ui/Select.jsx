@@ -10,13 +10,17 @@ export default function Select({
   disabled = false,
   className,
   id,
+  ...props
 }) {
   const selectId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
   return (
     <div className={cn("mb-4", className)}>
       {label && (
-        <label htmlFor={selectId} className="block mb-1.5 text-sm font-semibold text-foreground">
+        <label
+          htmlFor={selectId}
+          className="block mb-1.5 text-sm font-semibold text-foreground"
+        >
           {label}
         </label>
       )}
@@ -26,9 +30,10 @@ export default function Select({
           value={value}
           onChange={onChange}
           disabled={disabled}
+          {...props}
           className={cn(
             "w-full appearance-none rounded-md border bg-background px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
-            error ? "border-red-500" : "border-border"
+            error ? "border-red-500" : "border-border",
           )}
         >
           {options.map((opt) => (

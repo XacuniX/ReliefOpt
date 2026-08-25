@@ -19,7 +19,7 @@ export default function Toast({ type = "info", message, onDismiss, className }) 
       onDismiss?.();
     }, 3000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [onDismiss]);
 
   if (!visible) return null;
 

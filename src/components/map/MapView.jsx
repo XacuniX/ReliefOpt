@@ -102,13 +102,13 @@ export default function MapView({ children }) {
         zoom={8}
         scrollWheelZoom={true}
         attributionControl={false}
-        className="h-[calc(100vh-56px)] w-full rounded-none"
+        className="h-[calc(100vh-64px)] w-full rounded-none"
         whenReady={(event) => setMap(event.target)}
       >
         <CachedTileLayer />
         {children}
       </MapContainer>
-      <div className="absolute top-3 right-3 z-[1000] flex flex-col items-end gap-1">
+      <div className="absolute bottom-3 left-3 z-[1000] flex max-w-[calc(100%-6rem)] flex-col items-start gap-1">
         <button
           type="button"
           onClick={downloadVisibleArea}

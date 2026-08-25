@@ -59,6 +59,7 @@ export default function PackingCanvas({ vehicle, placements = [], rejected = [],
         <VehicleView title="Side View" vehicle={vehicle} placements={placements} side />
       </div>
       <p className="font-bold mt-4 mb-1">Volume Utilized: {volumeUtilized}%</p>
+      <p className="font-bold mb-1">{placements.length} boxes placed</p>
       <p className="font-bold mb-3">Total Weight: {totalWeight.toLocaleString()} kg</p>
       <Badge color={fits ? "green" : "amber"} text={fits ? "All boxes fit" : "Some boxes could not fit"} />
 

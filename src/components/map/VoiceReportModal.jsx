@@ -1,13 +1,79 @@
 import { useState, useEffect, useRef } from "react";
 import { Mic, Square } from "lucide-react";
-import { Button, Textarea, Toast, Loader, Progress, Input, Select } from "../ui";
+import {
+  Button,
+  Textarea,
+  Toast,
+  Loader,
+  Progress,
+  Input,
+  Select,
+} from "../ui";
 import Dialog from "../ui/Dialog";
 import { cityCoords } from "../../mockData";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
-import { loadModel, startRecording, transcribe } from "../../lib/speech";
+import {
+  isAndroidModelBundled,
+  listMicrophones,
+  loadModel,
+  SpeechInputError,
+  startRecording,
+  transcribe,
+} from "../../lib/speech";
 import { extractFields } from "../../lib/extract";
 import { calculateUrgency } from "../../lib/urgency";
+import { disasterTypes } from "../../lib/disasters";
+
+function microphoneErrorMessage(error) {
+  if (!window.isSecureContext) {
+    return "Microphone access requires HTTPS or localhost. Open this page securely and try again.";
+  }
+
+  switch (error?.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Microphone permission was denied. Allow microphone access for this site in your browser settings, then try again.";
+    case "NotFoundError":
+      return "No microphone was found. Connect a microphone or choose another input device, then try again.";
+    case "NotReadableError":
+    case "AbortError":
+      return "The selected microphone could not be opened. Close other apps using it, or choose another microphone.";
+    case "OverconstrainedError":
+      return "The selected microphone is no longer available. Choose another microphone and try again.";
+    default:
+      return error instanceof SpeechInputError
+        ? error.message
+        : "Could not start the selected microphone. Check its browser and system permissions, then try again.";
+  }
+}
+
+function modelErrorMessage(error) {
+  const detail = String(error?.message || "");
+  if (/failed to fetch|networkerror|load failed/i.test(detail)) {
+    return isAndroidModelBundled
+      ? `The bundled Whisper model could not be read: ${detail.slice(0, 180)}`
+      : "Whisper Base English could not be downloaded. Check the connection and make sure your browser or content blocker allows downloads from huggingface.co.";
+  }
+  if (/quota|storage|disk|cache/i.test(detail)) {
+    return "There is not enough browser storage for Whisper Base English. Free at least 100 MB for this site, then try again.";
+  }
+  if (/memory|allocation|out of bounds|unreachable/i.test(detail)) {
+    return "Whisper Base English ran out of browser memory. Close other heavy tabs, restart the browser, and try again.";
+  }
+  if (
+    /wasm|webassembly|webgpu|execution provider|unsupported device/i.test(
+      detail,
+    )
+  ) {
+    return isAndroidModelBundled
+      ? `Whisper Base English could not start in the Android app: ${detail.slice(0, 180)}`
+      : "This browser could not start Whisper Base English. Update Chrome or Edge, enable hardware acceleration, and try again.";
+  }
+  return detail
+    ? `Whisper Base English could not start: ${detail.slice(0, 180)}`
+    : "Whisper Base English could not start. Check your connection and available browser storage, then try again.";
+}
 
 export default function VoiceReportModal() {
   const { addReport, addMapPin } = useData();
@@ -17,7 +83,9 @@ export default function VoiceReportModal() {
   const [stage, setStage] = useState("idle");
   const [progress, setProgress] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-  const [language, setLanguage] = useState("bn");
+  const [inputLevel, setInputLevel] = useState(0);
+  const [microphones, setMicrophones] = useState([]);
+  const [selectedMicrophone, setSelectedMicrophone] = useState("");
   const [transcript, setTranscript] = useState("");
   const [typedText, setTypedText] = useState("");
   const [error, setError] = useState("");
@@ -25,29 +93,55 @@ export default function VoiceReportModal() {
   const [edits, setEdits] = useState({});
 
   const recorderRef = useRef(null);
-  const timerRef = useRef(null);
   const tickRef = useRef(null);
+  const meterRef = useRef(null);
+  const attemptRef = useRef(0);
 
   const extracted = transcript ? extractFields(transcript) : null;
+  const maxRecordingSeconds = 30;
 
   // User overrides sit on top of the auto-extraction. Empty number inputs mean
   // null (not confirmed zero), so merge with ?? only when a value is present.
   const fields = {
     ...(extracted || {}),
+    ...(edits.disasterType !== undefined
+      ? { disasterType: edits.disasterType }
+      : {}),
     ...(edits.location !== undefined ? { location: edits.location } : {}),
-    ...(edits.waterLevelFt !== undefined ? { waterLevelFt: edits.waterLevelFt } : {}),
-    ...(edits.peopleCount !== undefined ? { peopleCount: edits.peopleCount } : {}),
-    ...(edits.childrenPresent !== undefined ? { childrenPresent: edits.childrenPresent } : {}),
-    ...(edits.elderlyPresent !== undefined ? { elderlyPresent: edits.elderlyPresent } : {}),
-    ...(edits.daysWithoutFood !== undefined ? { daysWithoutFood: edits.daysWithoutFood } : {}),
+    ...(edits.waterLevelFt !== undefined
+      ? { waterLevelFt: edits.waterLevelFt }
+      : {}),
+    ...(edits.peopleCount !== undefined
+      ? { peopleCount: edits.peopleCount }
+      : {}),
+    ...(edits.childrenPresent !== undefined
+      ? { childrenPresent: edits.childrenPresent }
+      : {}),
+    ...(edits.elderlyPresent !== undefined
+      ? { elderlyPresent: edits.elderlyPresent }
+      : {}),
+    ...(edits.daysWithoutFood !== undefined
+      ? { daysWithoutFood: edits.daysWithoutFood }
+      : {}),
   };
 
   useEffect(() => {
     return () => {
-      clearTimeout(timerRef.current);
       clearInterval(tickRef.current);
+      clearInterval(meterRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let active = true;
+    listMicrophones()
+      .then((devices) => active && setMicrophones(devices))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   function showToast(type, message) {
     setToast({ type, message });
@@ -55,12 +149,14 @@ export default function VoiceReportModal() {
   }
 
   function reset() {
-    clearTimeout(timerRef.current);
+    attemptRef.current += 1;
     clearInterval(tickRef.current);
+    clearInterval(meterRef.current);
     recorderRef.current = null;
     setStage("idle");
     setProgress(0);
     setElapsed(0);
+    setInputLevel(0);
     setTranscript("");
     setTypedText("");
     setError("");
@@ -68,35 +164,93 @@ export default function VoiceReportModal() {
   }
 
   async function beginRecording() {
+    const attempt = ++attemptRef.current;
     setStage("loading");
     setError("");
+
+    let recorder;
     try {
-      await loadModel(({ progress: p }) => setProgress(p ?? 0));
-      const recorder = await startRecording();
+      recorder = await startRecording(selectedMicrophone);
+      if (attempt !== attemptRef.current) {
+        await recorder.stop().catch(() => {});
+        return;
+      }
       recorderRef.current = recorder;
+      listMicrophones()
+        .then(setMicrophones)
+        .catch(() => {});
+    } catch (caught) {
+      if (attempt !== attemptRef.current) return;
+      setError(microphoneErrorMessage(caught));
+      setStage("error");
+      return;
+    }
+
+    try {
+      await loadModel(({ progress: p }) => {
+        if (attempt === attemptRef.current && Number.isFinite(p)) {
+          setProgress((current) => Math.min(100, Math.max(current, p)));
+        }
+      });
+
+      if (attempt !== attemptRef.current) return;
+      await recorder.start();
       setElapsed(0);
+      setInputLevel(0);
       setStage("recording");
-      tickRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    } catch (err) {
+      meterRef.current = setInterval(() => {
+        Promise.resolve(recorder.getLevel())
+          .then((level) => setInputLevel(Number(level) || 0))
+          .catch(() => {});
+      }, 150);
+      tickRef.current = setInterval(
+        () =>
+          setElapsed((current) => {
+            const next = current + 1;
+            if (next >= maxRecordingSeconds) {
+              clearInterval(tickRef.current);
+              setTimeout(() => stopRecording(), 0);
+            }
+            return next;
+          }),
+        1000,
+      );
+    } catch (caught) {
+      if (attempt !== attemptRef.current) return;
+      const activeRecorder = recorderRef.current;
+      recorderRef.current = null;
+      activeRecorder?.stop().catch(() => {});
       setError(
-        "Could not access the microphone. Make sure you're on localhost or https and grant mic permission — or type the report below instead."
+        caught instanceof SpeechInputError
+          ? caught.message
+          : modelErrorMessage(caught),
       );
       setStage("error");
     }
   }
 
   async function stopRecording() {
-    clearTimeout(timerRef.current);
     clearInterval(tickRef.current);
+    clearInterval(meterRef.current);
     const recorder = recorderRef.current;
     if (!recorder) return;
+    recorderRef.current = null;
     setStage("transcribing");
     try {
-      const blob = await recorder.stop();
-      const text = await transcribe(blob, language);
+      const recording = await recorder.stop();
+      if (!recording) {
+        throw new SpeechInputError(
+          "Recording did not start. Please try again.",
+        );
+      }
+      const text = await transcribe(recording);
       finish(text);
-    } catch (err) {
-      setError("Speech recognition failed. Please try again, or type the report below instead.");
+    } catch (caught) {
+      setError(
+        caught instanceof SpeechInputError
+          ? caught.message
+          : "Speech recognition failed. Please try again, or type the report below instead.",
+      );
       setStage("error");
     }
   }
@@ -120,8 +274,8 @@ export default function VoiceReportModal() {
     });
 
     const report = {
-      id: `voice-${Date.now()}`,
-      type: "Other",
+      id: crypto.randomUUID(),
+      type: fields.disasterType ?? "Other",
       district: fields.location ?? "Unknown",
       location: coords ? { lat: coords[0], lng: coords[1] } : undefined,
       severity: 3,
@@ -146,11 +300,14 @@ export default function VoiceReportModal() {
       id: crypto.randomUUID(),
       position: coords ?? [23.8103, 90.4125],
       location: fields.location ?? "Unknown",
+      locationName: fields.location ?? "Unknown",
+      lat: (coords ?? [23.8103, 90.4125])[0],
+      lng: (coords ?? [23.8103, 90.4125])[1],
+      waterLevelFt: fields.waterLevelFt,
       waterLevel:
         fields.waterLevelFt != null ? `${fields.waterLevelFt}ft` : "—",
-      peopleCount:
-        fields.peopleCount != null ? String(fields.peopleCount) : "—",
-      childrenPresent: fields.childrenPresent ? "Yes" : "No",
+      peopleCount: fields.peopleCount,
+      childrenPresent: Boolean(fields.childrenPresent),
     };
     addMapPin(pin);
 
@@ -160,7 +317,6 @@ export default function VoiceReportModal() {
   }
 
   function handleClose() {
-    clearTimeout(timerRef.current);
     clearInterval(tickRef.current);
     if (recorderRef.current) {
       recorderRef.current.stop().catch(() => {});
@@ -183,33 +339,28 @@ export default function VoiceReportModal() {
         isOpen={open}
         onClose={handleClose}
         title="Voice Report"
-        persistent={["loading", "recording", "transcribing", "done"].includes(stage)}
+        persistent={["loading", "recording", "transcribing", "done"].includes(
+          stage,
+        )}
+        allowCloseButtonWhenPersistent
       >
         <div className="space-y-4">
           {stage === "idle" && (
             <div className="text-center py-6 space-y-4">
               <p className="text-muted-foreground text-sm">
-                Tap the mic button to start recording your voice report in
-                Bangla or Banglish.
+                Say the disaster type, district, affected people, water level,
+                and urgent needs. Transcription runs locally in English.
               </p>
-              <div className="flex justify-center gap-2">
-                {[
-                  { value: "bn", label: "বাংলা" },
-                  { value: "en", label: "English" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setLanguage(option.value)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                      language === option.value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <Select
+                label="Microphone"
+                value={selectedMicrophone}
+                onChange={(event) => setSelectedMicrophone(event.target.value)}
+                options={[
+                  { value: "", label: "System default microphone" },
+                  ...microphones,
+                ]}
+                className="text-left"
+              />
               <Button onClick={beginRecording}>
                 <Mic className="h-4 w-4 mr-2" />
                 Start Recording
@@ -224,7 +375,9 @@ export default function VoiceReportModal() {
               </p>
               <Progress value={progress} className="w-full" />
               <p className="text-xs text-muted-foreground">
-                First use downloads ~40 MB, then it works offline forever.
+                {isAndroidModelBundled
+                  ? "The speech model is included in this Android app and works offline."
+                  : "First use downloads ~80 MB, then it works offline from the browser cache."}
               </p>
             </div>
           )}
@@ -237,6 +390,33 @@ export default function VoiceReportModal() {
               <p className="text-sm font-medium text-foreground">
                 Recording… 00:{String(elapsed).padStart(2, "0")}
               </p>
+              <div className="w-full max-w-xs space-y-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Microphone level</span>
+                  <span>
+                    {inputLevel > 2 ? "Input detected" : "Speak to test"}
+                  </span>
+                </div>
+                <Progress
+                  value={inputLevel}
+                  aria-label={`Microphone input level ${inputLevel}%`}
+                />
+                {inputLevel <= 2 && elapsed >= 3 && (
+                  <p className="text-center text-xs text-amber-600">
+                    No input detected. Stop and choose another microphone.
+                  </p>
+                )}
+              </div>
+              <div className="w-full max-w-xs space-y-1">
+                <Progress
+                  value={(elapsed / maxRecordingSeconds) * 100}
+                  aria-label={`${Math.max(0, maxRecordingSeconds - elapsed)} seconds remaining`}
+                />
+                <p className="text-center text-xs text-muted-foreground">
+                  {Math.max(0, maxRecordingSeconds - elapsed)} seconds remaining
+                  (30-second limit)
+                </p>
+              </div>
               <Button variant="destructive" onClick={stopRecording}>
                 <Square className="h-4 w-4 mr-2" />
                 Stop
@@ -258,11 +438,21 @@ export default function VoiceReportModal() {
               <p className="text-sm text-red-600 bg-red-50 dark:bg-red-500/10 rounded-lg p-3">
                 {error}
               </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setError("");
+                  setStage("idle");
+                }}
+              >
+                Try another microphone
+              </Button>
               <Textarea
                 label="Type it instead"
                 value={typedText}
                 onChange={(e) => setTypedText(e.target.value)}
-                placeholder="e.g. Mirpur e pani 4 foot, 12 jon manush, baccha ache"
+                placeholder="e.g. Flash flooding in Cumilla, 4 feet of water, 12 people stranded"
                 rows={3}
               />
               <Button
@@ -291,10 +481,31 @@ export default function VoiceReportModal() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
                     <Select
+                      label="Disaster Type"
+                      value={fields.disasterType ?? ""}
+                      onChange={(e) =>
+                        setEdits((prev) => ({
+                          ...prev,
+                          disasterType: e.target.value || null,
+                        }))
+                      }
+                      options={[
+                        { value: "", label: "Select disaster type..." },
+                        ...disasterTypes.map((type) => ({
+                          value: type,
+                          label: type,
+                        })),
+                      ]}
+                      className="mb-2"
+                    />
+                    <Select
                       label="Location"
                       value={fields.location ?? ""}
                       onChange={(e) =>
-                        setEdits((prev) => ({ ...prev, location: e.target.value || null }))
+                        setEdits((prev) => ({
+                          ...prev,
+                          location: e.target.value || null,
+                        }))
                       }
                       options={[
                         { value: "", label: "Select location..." },
@@ -315,7 +526,9 @@ export default function VoiceReportModal() {
                         setEdits((prev) => ({
                           ...prev,
                           waterLevelFt:
-                            e.target.value === "" ? null : Number(e.target.value),
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
                         }))
                       }
                       className="mb-2"
@@ -330,7 +543,9 @@ export default function VoiceReportModal() {
                         setEdits((prev) => ({
                           ...prev,
                           peopleCount:
-                            e.target.value === "" ? null : Number(e.target.value),
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
                         }))
                       }
                       className="mb-2"
@@ -345,7 +560,9 @@ export default function VoiceReportModal() {
                         setEdits((prev) => ({
                           ...prev,
                           daysWithoutFood:
-                            e.target.value === "" ? null : Number(e.target.value),
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
                         }))
                       }
                       className="mb-2"
@@ -382,8 +599,17 @@ export default function VoiceReportModal() {
                 </div>
               )}
 
-              <Button className="w-full" onClick={handleSubmit}>
-                Submit Report
+              {(!fields.location || !fields.disasterType) && (
+                <p className="text-xs text-amber-600">
+                  Confirm both the disaster type and district before submitting.
+                </p>
+              )}
+              <Button
+                className="w-full"
+                onClick={handleSubmit}
+                disabled={!fields.location || !fields.disasterType}
+              >
+                Submit {fields.disasterType || "Disaster"} Report
               </Button>
             </>
           )}

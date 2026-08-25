@@ -1,11 +1,12 @@
-import { cityCoords } from "../mockData.js";
+import { districtCoords as cityCoords, findDistrictName } from "./districts.js";
+import { findDisasterType } from "./disasters.js";
 
 const BN_DIGITS = {
   "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
   "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9",
 };
-export const normaliseDigits = (s) =>
-  String(s).replace(/[০-৯]/g, (d) => BN_DIGITS[d]);
+export const normaliseDigits = (value) =>
+  String(value).replace(/[০-৯]/g, (digit) => BN_DIGITS[digit]);
 
 const KEYWORDS = {
   water: ["পানি", "পানির", "জল", "pani", "panir", "jol", "water"],
@@ -17,49 +18,77 @@ const KEYWORDS = {
   days: ["দিন", "din", "day", "days"],
 };
 
-// cityCoords keys are English; Whisper transcripts are Bengali script. Match
-// both by giving each city its English name plus common Bangla spellings.
+const EXTRA_KEYWORDS = {
+  water: ["floodwater", "flood water", "water level", "submerged", "inundated"],
+  feet: ["ft"],
+  people: [
+    "person", "persons", "resident", "residents", "family", "families", "victim",
+    "victims", "survivor", "survivors", "stranded", "missing", "injured", "affected",
+  ],
+  children: ["child", "kid", "infant", "infants", "baby", "babies", "minor", "minors"],
+  elderly: ["senior", "seniors", "older person", "older people", "older adult", "older adults"],
+  food: ["meal", "meals", "ration", "rations", "hungry", "starving"],
+  days: [],
+};
+
 const BN_CITY_NAMES = {
-  Sylhet: ["সিলেট"],
-  Barishal: ["বরিশাল"],
-  Rangpur: ["রংপুর", "রাঙ্গপুর"],
-  Cumilla: ["কুমিল্লা"],
-  Dhaka: ["ঢাকা"],
-  Chattogram: ["চট্টগ্রাম"],
-  Mymensingh: ["ময়মনসিংহ", "ময়মনসিংহ"],
-  Noakhali: ["নোয়াখালী", "নোয়াখালি"],
-  Khulna: ["খুলনা"],
-  Rajshahi: ["রাজশাহী", "রাজশাহি"],
-  Mirpur: ["মিরপুর"],
+  Sylhet: ["সিলেট"], Barishal: ["বরিশাল"], Rangpur: ["রংপুর", "রাঙ্গপুর"],
+  Cumilla: ["কুমিল্লা"], Dhaka: ["ঢাকা"], Chattogram: ["চট্টগ্রাম"],
+  Mymensingh: ["ময়মনসিংহ", "ময়মনসিংহ"], Noakhali: ["নোয়াখালী", "নোয়াখালি"],
+  Khulna: ["খুলনা"], Rajshahi: ["রাজশাহী", "রাজশাহি"], Mirpur: ["মিরপুর"],
 };
 
 const LOCATIONS = Object.fromEntries(
-  Object.keys(cityCoords).map((name) => [
-    name,
-    [name, ...(BN_CITY_NAMES[name] || [])].map((alias) => alias.toLowerCase()),
-  ])
+  Object.keys(cityCoords).map((name) => [name, [name, ...(BN_CITY_NAMES[name] || [])].map((alias) => alias.toLowerCase())]),
 );
 
-/** @returns {{ index: number, value: number }[]} */
+const NUMBER_WORD_VALUES = Object.freeze({
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
+  seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50,
+  sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+});
+const NUMBER_WORD_PATTERN = new RegExp(`\\b(${Object.keys(NUMBER_WORD_VALUES).join("|")})\\b`, "gi");
+
 function findNumbers(text) {
-  return Array.from(text.matchAll(/\d+(\.\d+)?/g)).map((m) => ({
-    index: m.index,
-    value: Number(m[0]),
+  const digitNumbers = Array.from(text.matchAll(/\d+(\.\d+)?/g)).map((match) => ({
+    index: match.index,
+    value: Number(match[0]),
   }));
+  const lowerText = text.toLowerCase();
+  const wordMatches = Array.from(lowerText.matchAll(NUMBER_WORD_PATTERN));
+  const wordNumbers = [];
+
+  for (let index = 0; index < wordMatches.length; index += 1) {
+    const match = wordMatches[index];
+    const value = NUMBER_WORD_VALUES[match[0]];
+    const next = wordMatches[index + 1];
+    const nextValue = next ? NUMBER_WORD_VALUES[next[0]] : null;
+    const separator = next ? lowerText.slice(match.index + match[0].length, next.index) : "";
+
+    if (value >= 20 && value % 10 === 0 && nextValue > 0 && nextValue < 10 && /^[\\s-]+$/.test(separator)) {
+      wordNumbers.push({ index: match.index, value: value + nextValue });
+      index += 1;
+    } else {
+      wordNumbers.push({ index: match.index, value });
+    }
+  }
+
+  return [...digitNumbers, ...wordNumbers].sort((left, right) => left.index - right.index);
 }
 
-/** @returns {number[]} character indexes where any alias of the given categories appears */
 function findKeywordHits(text, categories) {
   const hits = [];
+  const lowerText = text.toLowerCase();
   for (const category of categories) {
-    for (const alias of KEYWORDS[category]) {
+    for (const alias of [...KEYWORDS[category], ...(EXTRA_KEYWORDS[category] || [])]) {
       const lower = alias.toLowerCase();
       let from = 0;
-      let index = text.toLowerCase().indexOf(lower, from);
+      let index = lowerText.indexOf(lower, from);
       while (index !== -1) {
         hits.push(index);
         from = index + lower.length;
-        index = text.toLowerCase().indexOf(lower, from);
+        index = lowerText.indexOf(lower, from);
       }
     }
   }
@@ -67,7 +96,7 @@ function findKeywordHits(text, categories) {
 }
 
 function nearestNumber(numbers, keywordHits) {
-  if (numbers.length === 0 || keywordHits.length === 0) return null;
+  if (!numbers.length || !keywordHits.length) return null;
   let best = null;
   let bestDistance = Infinity;
   for (const number of numbers) {
@@ -82,33 +111,28 @@ function nearestNumber(numbers, keywordHits) {
   return best;
 }
 
-/**
- * Pulls structured facts out of a spoken/typed transcript.
- * @param {string} rawTranscript
- * @returns {import('./contracts').VoiceExtraction}
- */
+/** Pull structured facts out of a Bangla, Banglish, or English transcript. */
 export function extractFields(rawTranscript) {
   const text = normaliseDigits(String(rawTranscript ?? ""));
   const numbers = findNumbers(text);
-
   const waterHits = findKeywordHits(text, ["water", "feet"]);
   const peopleHits = findKeywordHits(text, ["people"]);
   const daysHits = findKeywordHits(text, ["days"]);
   const foodHits = findKeywordHits(text, ["food"]);
-
-  const matchedLocation = Object.entries(LOCATIONS).find(([, aliases]) =>
-    aliases.some((alias) => text.toLowerCase().includes(alias))
+  const matchedDistrict = findDistrictName(text);
+  const matchedLegacyLocation = Object.entries(LOCATIONS).find(([, aliases]) =>
+    aliases.some((alias) => text.toLowerCase().includes(alias)),
   );
 
   return {
     transcript: rawTranscript,
-    language: "bn",
-    location: matchedLocation ? matchedLocation[0] : null,
+    language: "en",
+    location: matchedDistrict ?? (matchedLegacyLocation ? matchedLegacyLocation[0] : null),
+    disasterType: findDisasterType(text),
     waterLevelFt: nearestNumber(numbers, waterHits),
     peopleCount: nearestNumber(numbers, peopleHits),
     childrenPresent: findKeywordHits(text, ["children"]).length > 0,
     elderlyPresent: findKeywordHits(text, ["elderly"]).length > 0,
-    daysWithoutFood:
-      foodHits.length > 0 ? nearestNumber(numbers, daysHits) : null,
+    daysWithoutFood: foodHits.length ? nearestNumber(numbers, daysHits) : null,
   };
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOffline } from "../../context/OfflineContext";
 import { useData } from "../../context/DataContext";
 import { getStatus } from "../../lib/sync";
@@ -6,12 +6,29 @@ import PeerPanel from "./PeerPanel";
 import OfflineQueue from "./OfflineQueue";
 import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
 import Dialog from "../ui/Dialog";
+import ApprovalQueue from "./ApprovalQueue";
+import { useAuth } from "../../context/AuthContext";
+import NearbySyncPanel from "./NearbySyncPanel";
+import { isAndroidNearbyAvailable } from "../../lib/nearbySync";
 
 export default function SyncIndicator() {
-  const { isOffline } = useOffline();
+  const { isOffline, toggleOffline } = useOffline();
   const { pendingCount, lastSyncedAt, syncQueue, drainQueue } = useData();
+  const { currentUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("devices");
+  const androidNearby = isAndroidNearbyAvailable();
+
+  useEffect(() => {
+    function openApprovals() {
+      if (currentUser?.role !== "central_admin") return;
+      setActiveTab("approvals");
+      setOpen(true);
+    }
+
+    window.addEventListener("reliefopt:open-approvals", openApprovals);
+    return () => window.removeEventListener("reliefopt:open-approvals", openApprovals);
+  }, [currentUser?.role]);
 
   const status = getStatus(isOffline, pendingCount);
 
@@ -56,10 +73,19 @@ export default function SyncIndicator() {
 
       <Dialog isOpen={open} onClose={() => setOpen(false)} title="Sync & Connectivity">
         <div className="space-y-4">
+          {!androidNearby && (
+            <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground">Manually simulate connectivity for offline field work.</p>
+              <button type="button" className="rounded-md border px-3 py-1.5 text-xs font-semibold" onClick={toggleOffline}>
+                Simulate {isOffline ? "Online" : "Offline"}
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
             {[
-              { key: "devices", label: "Nearby Devices" },
+              { key: "devices", label: androidNearby ? "Nearby Offline Sync" : "Nearby Devices" },
               { key: "queue", label: "Offline Queue" },
+              ...(currentUser?.role === "central_admin" ? [{ key: "approvals", label: "Approvals" }] : []),
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -75,7 +101,7 @@ export default function SyncIndicator() {
             ))}
           </div>
 
-          {activeTab === "devices" && <PeerPanel />}
+          {activeTab === "devices" && (androidNearby ? <NearbySyncPanel /> : <PeerPanel />)}
           {activeTab === "queue" && (
             <OfflineQueue
               queue={syncQueue}
@@ -83,6 +109,7 @@ export default function SyncIndicator() {
               lastSyncedAt={lastSyncedAt}
             />
           )}
+          {activeTab === "approvals" && <ApprovalQueue />}
         </div>
       </Dialog>
     </>
