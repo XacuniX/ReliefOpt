@@ -18,9 +18,9 @@ export function sessionFromAccessToken(accessToken, now = Date.now()) {
     if (parts.length !== 3 || parts.some((part) => !part)) return null;
     const claims = JSON.parse(decodeBase64Url(parts[1]));
     if (
-      typeof claims.sub !== "string" ||
-      typeof claims.username !== "string" ||
-      typeof claims.name !== "string" ||
+      typeof claims.sub !== "string" || !claims.sub.trim() ||
+      typeof claims.username !== "string" || !claims.username.trim() ||
+      typeof claims.name !== "string" || !claims.name.trim() ||
       !VALID_ROLES.has(claims.role) ||
       !Number.isFinite(claims.exp) ||
       claims.exp * 1000 <= now

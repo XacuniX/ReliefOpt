@@ -4,7 +4,10 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.js && npm --prefix server test",
+    "test": "npm run test:client && npm run test:server",
+    "test:client": "node --import ./test/setup.js --test test/*.test.js",
+    "test:server": "npm --prefix server run test",
+    "test:coverage": "node --experimental-test-coverage --import ./test/setup.js --test test/*.test.js && npm --prefix server run test:coverage",
     "test:e2e": "playwright test",
     "lint": "eslint .",
     "format:check": "prettier --check eslint.config.js playwright.config.js vite.config.js e2e test",

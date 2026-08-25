@@ -76,6 +76,7 @@ export function getDistrictCode(district) {
   const normalized = String(district || "").trim();
   if (DISTRICT_CODES[normalized]) return DISTRICT_CODES[normalized];
 
+  if (!normalized) return "UNK";
   const fallback = normalized.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3);
   return fallback.padEnd(3, "X") || "UNK";
 }
