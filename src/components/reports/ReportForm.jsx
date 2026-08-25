@@ -5,6 +5,10 @@ import { useAuth } from "../../context/AuthContext";
 import { getAll, put, remove } from "../../lib/db";
 import { districtNames } from "../../lib/districts";
 import { disasterTypes } from "../../lib/disasters";
+<<<<<<< HEAD
+=======
+
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
 
 function toNullableNumber(value) {
   return value === "" ? null : Number(value);

@@ -100,6 +100,7 @@ test("authenticated clients fetch complete sequence-bearing snapshots", async ()
 
 test("proposal submission is idempotent and approval advances the snapshot", async () => {
   const report = {
+<<<<<<< HEAD
     id: "sync-report",
     type: "Flood",
     district: "Dhaka",
@@ -108,6 +109,12 @@ test("proposal submission is idempotent and approval advances the snapshot", asy
     time: "2026-08-25T10:00:00.000Z",
     description: "Flooding reported by synchronization test",
     affectedCount: 25,
+=======
+    id: "sync-report", type: "Flood", district: "Dhaka",
+    location: { lat: 23.81, lng: 90.41 }, severity: 4,
+    time: "2026-08-25T10:00:00.000Z",
+    description: "Flooding reported by synchronization test", affectedCount: 25,
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
   };
   const first = await submit(
     workerToken,

@@ -98,9 +98,13 @@ export default function ReportsPage() {
       key: "id",
       label: "Report ID",
       render: (row) => (
+<<<<<<< HEAD
         <span className="font-mono text-xs font-semibold">
           {getReportReference(row)}
         </span>
+=======
+        <span className="font-mono text-xs font-semibold">{getReportReference(row)}</span>
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
       ),
     },
     {

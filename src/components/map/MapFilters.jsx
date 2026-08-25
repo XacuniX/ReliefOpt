@@ -49,7 +49,10 @@ export default function MapFilters({ filters, onFilterChange }) {
       {!isMinimized && (
         <div id="map-filter-controls" className="space-y-3 sm:space-y-4">
           <Input
+<<<<<<< HEAD
             label="Search district"
+=======
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
             placeholder="Search location..."
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -73,6 +76,7 @@ export default function MapFilters({ filters, onFilterChange }) {
                 />
                 <span
                   className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+<<<<<<< HEAD
                   style={{
                     background:
                       color === "blue"
@@ -83,6 +87,9 @@ export default function MapFilters({ filters, onFilterChange }) {
                             ? "#f97316"
                             : "#ef4444",
                   }}
+=======
+                  style={{ background: color === "blue" ? "#3b82f6" : color === "green" ? "#16a34a" : color === "orange" ? "#f97316" : "#ef4444" }}
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
                 />
                 {label}
               </label>
@@ -90,22 +97,33 @@ export default function MapFilters({ filters, onFilterChange }) {
           </div>
 
           <div>
+<<<<<<< HEAD
             <label
               htmlFor="map-min-severity"
               className="flex items-center justify-between text-sm text-foreground mb-1"
             >
+=======
+            <label className="flex items-center justify-between text-sm text-foreground mb-1">
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
               <span>Min Severity</span>
               <Badge color="red" text={String(filters.minSeverity)} />
             </label>
             <input
+<<<<<<< HEAD
               id="map-min-severity"
+=======
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
               type="range"
               min={1}
               max={5}
               value={filters.minSeverity}
+<<<<<<< HEAD
               onChange={(e) =>
                 onFilterChange({ minSeverity: Number(e.target.value) })
               }
+=======
+              onChange={(e) => onFilterChange({ minSeverity: Number(e.target.value) })}
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
               className="w-full accent-red-500"
             />
             <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">

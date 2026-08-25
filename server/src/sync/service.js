@@ -1,8 +1,12 @@
 import { AuthoritativeRepository, ProposalRepository } from "./repository.js";
+<<<<<<< HEAD
 import {
   createReportReference,
   getReportReferencePrefix,
 } from "../../../src/lib/reportReference.js";
+=======
+import { createReportReference, getReportReferencePrefix } from "../../../src/lib/reportReference.js";
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
 
 const TYPES = new Set([
   "ADD_REPORT",
@@ -306,6 +310,7 @@ export async function applyMutation(db, type, payload, actor) {
   switch (type) {
     case "ADD_REPORT": {
       const location = payload.location || {};
+<<<<<<< HEAD
       const latitude = optionalNumber(location.lat, "Latitude", {
         min: -90,
         max: 90,
@@ -360,14 +365,22 @@ export async function applyMutation(db, type, payload, actor) {
         ...payload,
         time: reportedAt,
       });
+=======
+      const reportedAt = payload.time || new Date().toISOString();
+      const referencePrefix = getReportReferencePrefix({ ...payload, time: reportedAt });
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
       const existingReferences = await db.query(
         "SELECT reference FROM reports WHERE reference LIKE $1",
         [`${referencePrefix}-%`],
       );
+<<<<<<< HEAD
       const reference = createReportReference(
         { ...payload, time: reportedAt },
         existingReferences.rows,
       );
+=======
+      const reference = createReportReference({ ...payload, time: reportedAt }, existingReferences.rows);
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
       await db.query(
         `INSERT INTO reports (
            id, type, district, latitude, longitude, severity, status, submitted_by_id,
@@ -376,6 +389,7 @@ export async function applyMutation(db, type, payload, actor) {
            urgency_zone, urgency_factors, children_present, elderly_present, notes, reference
          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,$20,$21,$22::jsonb,$23)`,
         [
+<<<<<<< HEAD
           text(payload.id, "Report ID", 100),
           text(payload.type, "Report type", 100),
           payload.district || null,
@@ -398,6 +412,15 @@ export async function applyMutation(db, type, payload, actor) {
           payload.childrenPresent ?? false,
           payload.elderlyPresent ?? false,
           JSON.stringify(payload.notes || []),
+=======
+          text(payload.id, "Report ID", 100), text(payload.type, "Report type", 100), payload.district || null,
+          location.lat ?? null, location.lng ?? null, Number(payload.severity), payload.status || "Pending",
+          actor.id, payload.assignedTeamId || null, reportedAt, payload.description || "",
+          payload.affectedCount ?? 0, payload.peopleCount ?? payload.affectedCount ?? 0,
+          payload.daysWithoutFood ?? 0, payload.waterLevelFt ?? 0, payload.distanceFromAidKm ?? 0,
+          payload.urgencyScore ?? 0, payload.urgencyZone || "green", JSON.stringify(payload.urgencyFactors || []),
+          payload.childrenPresent ?? false, payload.elderlyPresent ?? false, JSON.stringify(payload.notes || []),
+>>>>>>> 98a54c0c3a7a8aa786a562297aa51d5f57bb2e1e
           reference,
         ],
       );
