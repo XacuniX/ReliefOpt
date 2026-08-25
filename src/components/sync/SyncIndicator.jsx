@@ -10,6 +10,7 @@ import ApprovalQueue from "./ApprovalQueue";
 import { useAuth } from "../../context/AuthContext";
 import NearbySyncPanel from "./NearbySyncPanel";
 import { isAndroidNearbyAvailable } from "../../lib/nearbySync";
+import { operationalEvents } from "../../lib/operationalEvents";
 
 export default function SyncIndicator() {
   const { isOffline, toggleOffline } = useOffline();
@@ -17,6 +18,7 @@ export default function SyncIndicator() {
   const { currentUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("devices");
+  const [syncMessage, setSyncMessage] = useState("");
   const androidNearby = isAndroidNearbyAvailable();
 
   useEffect(() => {
@@ -29,6 +31,15 @@ export default function SyncIndicator() {
     window.addEventListener("reliefopt:open-approvals", openApprovals);
     return () => window.removeEventListener("reliefopt:open-approvals", openApprovals);
   }, [currentUser?.role]);
+
+  useEffect(() => operationalEvents.subscribe((event) => {
+    if (event.name?.startsWith("sync.") && event.type === "operation.failed") {
+      setSyncMessage("Last sync attempt failed; queued changes are safe on this device.");
+    }
+    if (event.name?.startsWith("sync.") && event.type === "operation.succeeded") {
+      setSyncMessage("");
+    }
+  }), []);
 
   const status = getStatus(isOffline, pendingCount);
 
@@ -73,6 +84,7 @@ export default function SyncIndicator() {
 
       <Dialog isOpen={open} onClose={() => setOpen(false)} title="Sync & Connectivity">
         <div className="space-y-4">
+          {syncMessage && <p role="status" className="rounded-md bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">{syncMessage}</p>}
           {!androidNearby && (
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
               <p className="text-xs text-muted-foreground">Manually simulate connectivity for offline field work.</p>

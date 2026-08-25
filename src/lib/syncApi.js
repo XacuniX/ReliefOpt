@@ -1,4 +1,4 @@
-import { apiRequest } from "./authApi";
+import { apiRequest } from "./authApi.js";
 
 function authorized(accessToken, options = {}) {
   return {

@@ -1,5 +1,5 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:4000").replace(/\/$/, "");
-const AUTH_TIMEOUT_MS = Number(import.meta.env.VITE_AUTH_TIMEOUT_MS) || 8000;
+const API_BASE_URL = (import.meta.env?.VITE_API_URL || "http://127.0.0.1:4000").replace(/\/$/, "");
+const AUTH_TIMEOUT_MS = Number(import.meta.env?.VITE_AUTH_TIMEOUT_MS) || 8000;
 
 export class AuthApiError extends Error {
   constructor(message, { status = 0, code = "AUTH_REQUEST_FAILED" } = {}) {
