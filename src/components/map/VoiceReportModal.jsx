@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Mic, Square } from "lucide-react";
-import { Button, Textarea, Toast, Loader, Progress, Input, Select } from "../ui";
+import {
+  Button,
+  Textarea,
+  Toast,
+  Loader,
+  Progress,
+  Input,
+  Select,
+} from "../ui";
 import Dialog from "../ui/Dialog";
 import { cityCoords } from "../../mockData";
 import { useData } from "../../context/DataContext";
@@ -43,7 +51,9 @@ function microphoneErrorMessage(error) {
 function modelErrorMessage(error) {
   const detail = String(error?.message || "");
   if (/failed to fetch|networkerror|load failed/i.test(detail)) {
-    return "Whisper Base English could not be downloaded. Check the connection and make sure your browser or content blocker allows downloads from huggingface.co.";
+    return isAndroidModelBundled
+      ? `The bundled Whisper model could not be read: ${detail.slice(0, 180)}`
+      : "Whisper Base English could not be downloaded. Check the connection and make sure your browser or content blocker allows downloads from huggingface.co.";
   }
   if (/quota|storage|disk|cache/i.test(detail)) {
     return "There is not enough browser storage for Whisper Base English. Free at least 100 MB for this site, then try again.";
@@ -51,8 +61,14 @@ function modelErrorMessage(error) {
   if (/memory|allocation|out of bounds|unreachable/i.test(detail)) {
     return "Whisper Base English ran out of browser memory. Close other heavy tabs, restart the browser, and try again.";
   }
-  if (/wasm|webassembly|webgpu|execution provider|unsupported device/i.test(detail)) {
-    return "This browser could not start Whisper Base English. Update Chrome or Edge, enable hardware acceleration, and try again.";
+  if (
+    /wasm|webassembly|webgpu|execution provider|unsupported device/i.test(
+      detail,
+    )
+  ) {
+    return isAndroidModelBundled
+      ? `Whisper Base English could not start in the Android app: ${detail.slice(0, 180)}`
+      : "This browser could not start Whisper Base English. Update Chrome or Edge, enable hardware acceleration, and try again.";
   }
   return detail
     ? `Whisper Base English could not start: ${detail.slice(0, 180)}`
@@ -88,13 +104,25 @@ export default function VoiceReportModal() {
   // null (not confirmed zero), so merge with ?? only when a value is present.
   const fields = {
     ...(extracted || {}),
-    ...(edits.disasterType !== undefined ? { disasterType: edits.disasterType } : {}),
+    ...(edits.disasterType !== undefined
+      ? { disasterType: edits.disasterType }
+      : {}),
     ...(edits.location !== undefined ? { location: edits.location } : {}),
-    ...(edits.waterLevelFt !== undefined ? { waterLevelFt: edits.waterLevelFt } : {}),
-    ...(edits.peopleCount !== undefined ? { peopleCount: edits.peopleCount } : {}),
-    ...(edits.childrenPresent !== undefined ? { childrenPresent: edits.childrenPresent } : {}),
-    ...(edits.elderlyPresent !== undefined ? { elderlyPresent: edits.elderlyPresent } : {}),
-    ...(edits.daysWithoutFood !== undefined ? { daysWithoutFood: edits.daysWithoutFood } : {}),
+    ...(edits.waterLevelFt !== undefined
+      ? { waterLevelFt: edits.waterLevelFt }
+      : {}),
+    ...(edits.peopleCount !== undefined
+      ? { peopleCount: edits.peopleCount }
+      : {}),
+    ...(edits.childrenPresent !== undefined
+      ? { childrenPresent: edits.childrenPresent }
+      : {}),
+    ...(edits.elderlyPresent !== undefined
+      ? { elderlyPresent: edits.elderlyPresent }
+      : {}),
+    ...(edits.daysWithoutFood !== undefined
+      ? { daysWithoutFood: edits.daysWithoutFood }
+      : {}),
   };
 
   useEffect(() => {
@@ -110,7 +138,9 @@ export default function VoiceReportModal() {
     listMicrophones()
       .then((devices) => active && setMicrophones(devices))
       .catch(() => {});
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [open]);
 
   function showToast(type, message) {
@@ -146,7 +176,9 @@ export default function VoiceReportModal() {
         return;
       }
       recorderRef.current = recorder;
-      listMicrophones().then(setMicrophones).catch(() => {});
+      listMicrophones()
+        .then(setMicrophones)
+        .catch(() => {});
     } catch (caught) {
       if (attempt !== attemptRef.current) return;
       setError(microphoneErrorMessage(caught));
@@ -162,25 +194,37 @@ export default function VoiceReportModal() {
       });
 
       if (attempt !== attemptRef.current) return;
-      recorder.start();
+      await recorder.start();
       setElapsed(0);
       setInputLevel(0);
       setStage("recording");
-      meterRef.current = setInterval(() => setInputLevel(recorder.getLevel()), 150);
-      tickRef.current = setInterval(() => setElapsed((current) => {
-        const next = current + 1;
-        if (next >= maxRecordingSeconds) {
-          clearInterval(tickRef.current);
-          setTimeout(() => stopRecording(), 0);
-        }
-        return next;
-      }), 1000);
+      meterRef.current = setInterval(() => {
+        Promise.resolve(recorder.getLevel())
+          .then((level) => setInputLevel(Number(level) || 0))
+          .catch(() => {});
+      }, 150);
+      tickRef.current = setInterval(
+        () =>
+          setElapsed((current) => {
+            const next = current + 1;
+            if (next >= maxRecordingSeconds) {
+              clearInterval(tickRef.current);
+              setTimeout(() => stopRecording(), 0);
+            }
+            return next;
+          }),
+        1000,
+      );
     } catch (caught) {
       if (attempt !== attemptRef.current) return;
       const activeRecorder = recorderRef.current;
       recorderRef.current = null;
       activeRecorder?.stop().catch(() => {});
-      setError(caught instanceof SpeechInputError ? caught.message : modelErrorMessage(caught));
+      setError(
+        caught instanceof SpeechInputError
+          ? caught.message
+          : modelErrorMessage(caught),
+      );
       setStage("error");
     }
   }
@@ -195,14 +239,18 @@ export default function VoiceReportModal() {
     try {
       const recording = await recorder.stop();
       if (!recording) {
-        throw new SpeechInputError("Recording did not start. Please try again.");
+        throw new SpeechInputError(
+          "Recording did not start. Please try again.",
+        );
       }
       const text = await transcribe(recording);
       finish(text);
     } catch (caught) {
-      setError(caught instanceof SpeechInputError
-        ? caught.message
-        : "Speech recognition failed. Please try again, or type the report below instead.");
+      setError(
+        caught instanceof SpeechInputError
+          ? caught.message
+          : "Speech recognition failed. Please try again, or type the report below instead.",
+      );
       setStage("error");
     }
   }
@@ -291,15 +339,17 @@ export default function VoiceReportModal() {
         isOpen={open}
         onClose={handleClose}
         title="Voice Report"
-        persistent={["loading", "recording", "transcribing", "done"].includes(stage)}
+        persistent={["loading", "recording", "transcribing", "done"].includes(
+          stage,
+        )}
         allowCloseButtonWhenPersistent
       >
         <div className="space-y-4">
           {stage === "idle" && (
             <div className="text-center py-6 space-y-4">
               <p className="text-muted-foreground text-sm">
-                Say the disaster type, district, affected people, water level, and urgent needs.
-                Transcription runs locally in English.
+                Say the disaster type, district, affected people, water level,
+                and urgent needs. Transcription runs locally in English.
               </p>
               <Select
                 label="Microphone"
@@ -343,7 +393,9 @@ export default function VoiceReportModal() {
               <div className="w-full max-w-xs space-y-1">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Microphone level</span>
-                  <span>{inputLevel > 2 ? "Input detected" : "Speak to test"}</span>
+                  <span>
+                    {inputLevel > 2 ? "Input detected" : "Speak to test"}
+                  </span>
                 </div>
                 <Progress
                   value={inputLevel}
@@ -361,7 +413,8 @@ export default function VoiceReportModal() {
                   aria-label={`${Math.max(0, maxRecordingSeconds - elapsed)} seconds remaining`}
                 />
                 <p className="text-center text-xs text-muted-foreground">
-                  {Math.max(0, maxRecordingSeconds - elapsed)} seconds remaining (30-second limit)
+                  {Math.max(0, maxRecordingSeconds - elapsed)} seconds remaining
+                  (30-second limit)
                 </p>
               </div>
               <Button variant="destructive" onClick={stopRecording}>
@@ -438,7 +491,10 @@ export default function VoiceReportModal() {
                       }
                       options={[
                         { value: "", label: "Select disaster type..." },
-                        ...disasterTypes.map((type) => ({ value: type, label: type })),
+                        ...disasterTypes.map((type) => ({
+                          value: type,
+                          label: type,
+                        })),
                       ]}
                       className="mb-2"
                     />
@@ -446,7 +502,10 @@ export default function VoiceReportModal() {
                       label="Location"
                       value={fields.location ?? ""}
                       onChange={(e) =>
-                        setEdits((prev) => ({ ...prev, location: e.target.value || null }))
+                        setEdits((prev) => ({
+                          ...prev,
+                          location: e.target.value || null,
+                        }))
                       }
                       options={[
                         { value: "", label: "Select location..." },
@@ -467,7 +526,9 @@ export default function VoiceReportModal() {
                         setEdits((prev) => ({
                           ...prev,
                           waterLevelFt:
-                            e.target.value === "" ? null : Number(e.target.value),
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
                         }))
                       }
                       className="mb-2"
@@ -482,7 +543,9 @@ export default function VoiceReportModal() {
                         setEdits((prev) => ({
                           ...prev,
                           peopleCount:
-                            e.target.value === "" ? null : Number(e.target.value),
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
                         }))
                       }
                       className="mb-2"
@@ -497,7 +560,9 @@ export default function VoiceReportModal() {
                         setEdits((prev) => ({
                           ...prev,
                           daysWithoutFood:
-                            e.target.value === "" ? null : Number(e.target.value),
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
                         }))
                       }
                       className="mb-2"

@@ -1,5 +1,9 @@
 import { Capacitor } from "@capacitor/core";
 import {
+  createNativeAndroidRecorder,
+  isNativeAndroidAudioRecorderAvailable,
+} from "./nativeAudioRecorder";
+import {
   cleanTranscript,
   mixToMono,
   resampleAudio,
@@ -12,13 +16,19 @@ export { SpeechInputError } from "./speechAudio";
 
 const MODEL_ID = "Xenova/whisper-base.en";
 export const isAndroidModelBundled = Capacitor.getPlatform() === "android";
-const MODEL_DTYPE = isAndroidModelBundled ? "q4f16" : "q8";
+// The legacy q8 Whisper decoder cannot be initialized by the ONNX Runtime
+// bundled with Transformers.js 4.x (TransposeDQWeightsForMatMulNBits fails
+// because the old graph has no merged scale tensor). The q4 export uses the
+// current MatMulNBits representation and works with the WASM backend.
+const MODEL_DTYPE = "q4";
 let transcriber = null;
 let transcriberPromise = null;
 let transformersPromise = null;
 
 async function getPreferredDevices() {
-  if (!navigator.gpu?.requestAdapter) return ["wasm"];
+  // Mobile WebGPU drivers can initialize Whisper but terminate decoding early.
+  // Android uses the stable q4/WASM pairing; desktop browsers may use WebGPU.
+  if (isAndroidModelBundled || !navigator.gpu?.requestAdapter) return ["wasm"];
   try {
     const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
     return adapter ? ["webgpu", "wasm"] : ["wasm"];
@@ -105,6 +115,10 @@ export async function listMicrophones() {
 
 /** Captures raw microphone PCM without passing through MediaRecorder codecs. */
 export async function startRecording(deviceId = "") {
+  if (isNativeAndroidAudioRecorderAvailable()) {
+    return createNativeAndroidRecorder();
+  }
+
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new SpeechInputError(
       "Microphone recording is unavailable in this browser. Use a current browser over HTTPS or localhost.",
@@ -149,7 +163,9 @@ export async function startRecording(deviceId = "") {
   const source = audioContext.createMediaStreamSource(stream);
   const processor = audioContext.createScriptProcessor(4096, 1, 1);
   const silentOutput = audioContext.createGain();
-  silentOutput.gain.value = 0;
+  // Android WebView may stop pulling a ScriptProcessor graph whose output is
+  // exactly zero. A practically inaudible gain keeps microphone frames flowing.
+  silentOutput.gain.value = 0.00001;
   const chunks = [];
   let currentLevel = 0;
   let started = false;
@@ -211,9 +227,12 @@ export async function startRecording(deviceId = "") {
 export async function transcribe(recording) {
   const audio = trimAndNormalizeSpeech(
     resampleAudio(recording.audio, recording.sampleRate, TARGET_SAMPLE_RATE),
+    TARGET_SAMPLE_RATE,
+    { trimSilence: !isAndroidModelBundled },
   );
 
   const model = await loadModel();
+
   const durationSeconds = audio.length / TARGET_SAMPLE_RATE;
   const result = await model(audio, {
     chunk_length_s: 30,

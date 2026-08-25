@@ -36,7 +36,7 @@ function rms(audio, start, end) {
   return Math.sqrt(sum / Math.max(1, end - start));
 }
 
-export function trimAndNormalizeSpeech(audio, sampleRate = TARGET_SAMPLE_RATE) {
+export function trimAndNormalizeSpeech(audio, sampleRate = TARGET_SAMPLE_RATE, { trimSilence = true } = {}) {
   const frameLength = Math.max(1, Math.round(sampleRate * 0.02));
   const frameLevels = [];
   for (let start = 0; start < audio.length; start += frameLength) {
@@ -52,7 +52,14 @@ export function trimAndNormalizeSpeech(audio, sampleRate = TARGET_SAMPLE_RATE) {
     );
   }
 
-  const speechThreshold = Math.max(0.000_000_1, peakLevel * 0.1);
+  // Phone automatic gain control can create a single loud opening frame. Base
+  // the threshold on sustained speech too, so the remainder is not trimmed.
+  const sortedLevels = [...frameLevels].sort((left, right) => left - right);
+  const sustainedLevel = sortedLevels[Math.floor((sortedLevels.length - 1) * 0.9)] || peakLevel;
+  const speechThreshold = Math.max(
+    0.000_000_1,
+    Math.min(peakLevel * 0.1, sustainedLevel * 0.25),
+  );
   const firstVoiceFrame = frameLevels.findIndex((level) => level >= speechThreshold);
   const lastVoiceFrame = frameLevels.findLastIndex((level) => level >= speechThreshold);
   if (firstVoiceFrame < 0 || lastVoiceFrame < 0) {
@@ -62,8 +69,8 @@ export function trimAndNormalizeSpeech(audio, sampleRate = TARGET_SAMPLE_RATE) {
   }
 
   const padding = Math.round(sampleRate * 0.25);
-  const start = Math.max(0, firstVoiceFrame * frameLength - padding);
-  const end = Math.min(audio.length, (lastVoiceFrame + 1) * frameLength + padding);
+  const start = trimSilence ? Math.max(0, firstVoiceFrame * frameLength - padding) : 0;
+  const end = trimSilence ? Math.min(audio.length, (lastVoiceFrame + 1) * frameLength + padding) : audio.length;
   const spokenAudio = audio.slice(start, end);
   const level = rms(spokenAudio, 0, spokenAudio.length);
   const gain = Math.min(6, Math.max(0.4, 0.1 / level));

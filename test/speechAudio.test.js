@@ -36,6 +36,17 @@ test("speech audio rejects silence and removes leading and trailing silence", ()
   assert.ok(trimAndNormalizeSpeech(audio, 10).length < audio.length);
 });
 
+test("phone-mode normalization retains the full captured recording", () => {
+  const audio = Float32Array.from([
+    ...new Float32Array(40),
+    ...Array.from({ length: 120 }, (_, index) => (index % 2 ? 0.02 : -0.02)),
+    ...new Float32Array(40),
+  ]);
+
+  const normalized = trimAndNormalizeSpeech(audio, 100, { trimSilence: false });
+  assert.equal(normalized.length, audio.length);
+});
+
 test("very quiet microphone speech is normalized instead of rejected", () => {
   const quietSpeech = Float32Array.from(
     { length: 1_600 },
@@ -44,6 +55,17 @@ test("very quiet microphone speech is normalized instead of rejected", () => {
   const normalized = trimAndNormalizeSpeech(quietSpeech, 16_000);
 
   assert.ok(normalized.some((sample) => Math.abs(sample) > 0.0001));
+});
+
+test("speech trimming retains sustained phone speech after a loud opening frame", () => {
+  const audio = new Float32Array(160);
+  audio[2] = 0.8;
+  audio[3] = -0.8;
+  for (let index = 12; index < 150; index += 1)
+    audio[index] = index % 2 ? 0.02 : -0.02;
+
+  const normalized = trimAndNormalizeSpeech(audio, 100);
+  assert.ok(normalized.length > 120);
 });
 
 test("repeated hallucinated tokens are rejected", () => {

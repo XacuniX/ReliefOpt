@@ -273,15 +273,17 @@ Client and server environments are defined by their package and configuration fi
 - **Client dependencies:** React 19, react-router-dom 7, react-leaflet 5,
   Leaflet 1.9, Recharts 2, `idb` 8, `@huggingface/transformers` 4, Tailwind CSS
   4, and `vite-plugin-pwa`.
-- **Network:** The client works online and offline. Offline shell loading
-  requires a prior visit (service worker precache) or a built app.
+- **Network:** The client works online and offline. Browser shell loading uses a
+  service-worker precache after the first visit. Android loads its shell directly
+  from APK assets and does not register a service worker, preventing stale web
+  bundles from surviving an app update.
 - **Protocols:** `http://localhost` or `https://` for the PWA client (required
   for microphone, service worker, and PWA features); the backend exposes an HTTP
   API over `http://localhost` or `https://`.
-- **Speech model:** English-only `Xenova/whisper-base.en`, run via WebGPU where
-  available with a WASM fallback. The web build uses quantised `q8` weights,
-  downloaded and cached on first use. The Android build packages quantised
-  `q4f16` weights with the APK so Android users do not download the model.
+- **Speech model:** English-only `Xenova/whisper-base.en`. Web clients run it via
+  WebGPU where available with a WASM fallback. Android uses the stable q8/WASM
+  pairing and packages those quantised `q8` weights with the APK, while web
+  clients download and cache the weights on first use.
 
 ### 2.4 Design and Implementation Constraints
 
@@ -471,9 +473,10 @@ district, disaster-type, and emergency-detail extraction, producing a scored
 report and a map pin. Bangla/Banglish transcription and language selection have
 been intentionally removed.
 
-- **FR-VOICE.1** The system shall capture audio from the microphone using
-  `getUserMedia` and `AudioContext`, retaining raw PCM samples without passing
-  through `MediaRecorder` codecs. `[IMPLEMENTED]`
+- **FR-VOICE.1** The system shall capture raw PCM microphone samples without
+  passing through `MediaRecorder` codecs. The web build uses `getUserMedia` and
+  `AudioContext`; Android uses the native `AudioRecord` API and transfers the
+  completed PCM recording in validated, bounded bridge chunks. `[IMPLEMENTED]`
 - **FR-VOICE.2** The system shall transcribe captured audio to text using the
   English-only `Xenova/whisper-base.en` model loaded via
   `@huggingface/transformers`. `[IMPLEMENTED]`
@@ -789,8 +792,9 @@ visual output and export.
 
 ### 4.2 Hardware Interfaces
 
-- **Microphone:** required for voice reporting (`getUserMedia`, `AudioContext`),
-  with selectable input devices where the browser exposes device labels.
+- **Microphone:** required for voice reporting. Web clients use `getUserMedia`
+  and `AudioContext`, with selectable browser input devices; Android uses native
+  `AudioRecord` capture.
 - **Display:** responsive layouts from mobile to desktop.
 - **No other embedded/IoT hardware interfaces are present in the codebase.**
 
@@ -808,7 +812,7 @@ visual output and export.
 | **@huggingface/transformers** | In-browser Whisper speech recognition |
 | **WebRTC** (`RTCPeerConnection`, `RTCDataChannel`) | Peer-to-peer snapshot relay (offline only) |
 | **BroadcastChannel** | Same-device WebRTC signalling |
-| **vite-plugin-pwa / Workbox** | Service worker and offline shell caching |
+| **vite-plugin-pwa / Workbox** | Browser-only service worker and offline shell caching |
 | **Recharts** | Dashboard analytics charts |
 
 ### 4.4 Communication Interfaces

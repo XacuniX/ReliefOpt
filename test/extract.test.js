@@ -58,6 +58,23 @@ test("extracts English, Banglish, and Bangla reports", () => {
   );
 });
 
+test("extracts separate spoken numbers for water, people, and food duration", () => {
+  const result = extractFields(
+    "There's four-foot water in the Dinajpur area with children and elderly people present. There's about 40 people present here and food needs to be sent here within two days.",
+  );
+
+  assert.deepEqual(
+    {
+      water: result.waterLevelFt,
+      people: result.peopleCount,
+      days: result.daysWithoutFood,
+      children: result.childrenPresent,
+      elderly: result.elderlyPresent,
+    },
+    { water: 4, people: 40, days: 2, children: true, elderly: true },
+  );
+});
+
 test("missing extraction values remain null or false", () => {
   assert.deepEqual(extractFields("").location, null);
   const result = extractFields("Help is requested");

@@ -42,8 +42,39 @@ const LOCATIONS = Object.fromEntries(
   Object.keys(cityCoords).map((name) => [name, [name, ...(BN_CITY_NAMES[name] || [])].map((alias) => alias.toLowerCase())]),
 );
 
+const NUMBER_WORD_VALUES = Object.freeze({
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
+  seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50,
+  sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+});
+const NUMBER_WORD_PATTERN = new RegExp(`\\b(${Object.keys(NUMBER_WORD_VALUES).join("|")})\\b`, "gi");
+
 function findNumbers(text) {
-  return Array.from(text.matchAll(/\d+(\.\d+)?/g)).map((match) => ({ index: match.index, value: Number(match[0]) }));
+  const digitNumbers = Array.from(text.matchAll(/\d+(\.\d+)?/g)).map((match) => ({
+    index: match.index,
+    value: Number(match[0]),
+  }));
+  const lowerText = text.toLowerCase();
+  const wordMatches = Array.from(lowerText.matchAll(NUMBER_WORD_PATTERN));
+  const wordNumbers = [];
+
+  for (let index = 0; index < wordMatches.length; index += 1) {
+    const match = wordMatches[index];
+    const value = NUMBER_WORD_VALUES[match[0]];
+    const next = wordMatches[index + 1];
+    const nextValue = next ? NUMBER_WORD_VALUES[next[0]] : null;
+    const separator = next ? lowerText.slice(match.index + match[0].length, next.index) : "";
+
+    if (value >= 20 && value % 10 === 0 && nextValue > 0 && nextValue < 10 && /^[\\s-]+$/.test(separator)) {
+      wordNumbers.push({ index: match.index, value: value + nextValue });
+      index += 1;
+    } else {
+      wordNumbers.push({ index: match.index, value });
+    }
+  }
+
+  return [...digitNumbers, ...wordNumbers].sort((left, right) => left.index - right.index);
 }
 
 function findKeywordHits(text, categories) {
