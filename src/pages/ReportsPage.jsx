@@ -107,7 +107,7 @@ export default function ReportsPage() {
     {
       key: "urgencyScore",
       label: "Urgency",
-      render: (row) => row.urgencyScore ?? 0,
+      render: (row) => <Badge color={row.urgencyColor} text={row.urgencyLabel} />,
     },
     {
       key: "status",

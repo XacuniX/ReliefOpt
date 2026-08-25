@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getAll, put, remove, seedOnce } from "../lib/db";
-import { makeEntry, drainQueue } from "../lib/sync";
+import { syncManager } from "../lib/syncManager";
+import { eventBus } from "../lib/eventBus";
+import { decorateReports } from "../lib/reportDecorator";
 
 const DataContext = createContext(null);
 
@@ -117,8 +119,9 @@ export function DataProvider({ children }) {
   // then re-applied automatically when the network returns.
 
   function enqueueSync(actionType, payload) {
-    const entry = makeEntry(actionType, payload);
+    const entry = syncManager.enqueue(actionType, payload);
     updateStore("syncQueue", (p) => [...p, entry]);
+    eventBus.publish("sync:queued", entry);
     return entry;
   }
 
@@ -183,7 +186,7 @@ export function DataProvider({ children }) {
   async function drainNow() {
     const queue = state.syncQueue.filter((e) => e.status !== "Done");
     if (queue.length === 0) return;
-    const { applied } = await drainQueue(
+    const { applied } = await syncManager.synchronize(
       queue,
       async (entry) => {
         applyRemoteChange(entry);
@@ -235,13 +238,11 @@ export function DataProvider({ children }) {
     });
   }
 
-  const enrichedReports = state.reports.map((r) => ({
-    ...r,
-    submittedBy:
-      state.users.find((u) => u.id === r.submittedById)?.name ??
-      r.submittedBy ??
-      "Unknown",
-  }));
+  // Decorator pattern: enrich persisted reports only when presenting them.
+  const enrichedReports = decorateReports(state.reports, {
+    users: state.users,
+    teams: state.teams,
+  });
 
   const enrichedInventory = state.inventory.map((i) => ({
     ...i,
@@ -275,20 +276,32 @@ export function DataProvider({ children }) {
     lastSyncedAt,
 
     addReport: (r) =>
-      commit("ADD_REPORT", r, () => updateStore("reports", (p) => [r, ...p])),
+      commit("ADD_REPORT", r, () => {
+        updateStore("reports", (p) => [r, ...p]);
+        eventBus.publish("report:created", r);
+      }),
     updateReport: (id, patch) =>
       commit(
         "UPDATE_REPORT",
         { id, patch },
-        () => updateStore("reports", (p) => p.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+        () => {
+          updateStore("reports", (p) => p.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+          eventBus.publish("report:updated", { id, patch });
+        }
       ),
     addTask: (t) =>
-      commit("ADD_TASK", t, () => updateStore("tasks", (p) => [t, ...p])),
+      commit("ADD_TASK", t, () => {
+        updateStore("tasks", (p) => [t, ...p]);
+        eventBus.publish("task:created", t);
+      }),
     updateTask: (id, patch) =>
       commit(
         "MOVE_TASK",
         { id, status: patch.status },
-        () => updateStore("tasks", (p) => p.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+        () => {
+          updateStore("tasks", (p) => p.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+          eventBus.publish("task:updated", { id, patch });
+        }
       ),
     addItem: (item) => updateStore("inventory", (p) => [item, ...p]),
     updateItem: (id, patch) =>
@@ -320,6 +333,7 @@ export function DataProvider({ children }) {
           p.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i))
         );
         updateStore("stockLog", (p) => [entry, ...p]);
+        eventBus.publish("inventory:changed", { itemId: id, delta, reason });
       });
     },
     markNotificationRead: (id) =>
@@ -335,6 +349,8 @@ export function DataProvider({ children }) {
       updateStore("syncQueue", (p) => p.map((e) => (e.id === id ? { ...e, ...patch } : e))),
     clearSyncEntry: (id) => updateStore("syncQueue", (p) => p.filter((e) => e.id !== id)),
     drainQueue: () => drainNow(),
+    // Observer API for features that need to react outside the React tree.
+    subscribe: (eventName, listener) => eventBus.subscribe(eventName, listener),
     applyRemoteChange,
   };
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useOffline } from "../../context/OfflineContext";
 import { useData } from "../../context/DataContext";
-import { getStatus } from "../../lib/sync";
+import { syncManager } from "../../lib/syncManager";
 import PeerPanel from "./PeerPanel";
 import OfflineQueue from "./OfflineQueue";
 import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
@@ -13,7 +13,7 @@ export default function SyncIndicator() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("devices");
 
-  const status = getStatus(isOffline, pendingCount);
+  const status = syncManager.status(isOffline, pendingCount);
 
   const config = {
     online: {

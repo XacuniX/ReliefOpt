@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Card, Button } from "../ui";
 import { alerts as mockAlerts } from "../../mockData";
+import { eventBus } from "../../lib/eventBus";
 
 const severityStyles = {
   Critical: "border-red-500",
@@ -10,6 +11,19 @@ const severityStyles = {
 
 export default function AlertFeed() {
   const [visibleAlerts, setVisibleAlerts] = useState(mockAlerts);
+
+  // Observer pattern in use: a submitted report becomes a dashboard alert
+  // without ReportForm needing to know that this widget exists.
+  useEffect(() => eventBus.subscribe("report:created", (report) => {
+    const severity = report.urgencyScore >= 70 ? "Critical" : report.urgencyScore >= 40 ? "High" : "Medium";
+    setVisibleAlerts((current) => [{
+      id: `report-alert-${report.id}`,
+      location: report.district || "Unknown location",
+      severity,
+      message: `${report.type || "Emergency"} report received (urgency ${report.urgencyScore || 0}/100).`,
+      timestamp: report.time || new Date().toISOString(),
+    }, ...current]);
+  }), []);
 
   function acknowledge(id) {
     setVisibleAlerts((prev) => prev.filter((a) => a.id !== id));

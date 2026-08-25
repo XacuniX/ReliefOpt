@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Select, Textarea, Progress, Toast, Badge } from "../ui";
-import { calculateUrgency } from "../../lib/urgency";
+import { calculateUrgency, getUrgencyStrategyName } from "../../lib/urgency";
 import { useAuth } from "../../context/AuthContext";
 
 const districts = [
@@ -52,6 +52,7 @@ export default function ReportForm({ onSubmit }) {
     const daysWithoutFood = toNullableNumber(form.daysWithoutFood);
     const waterLevelFt = toNullableNumber(form.waterLevelFt);
     const distanceFromAidKm = toNullableNumber(form.distanceFromAidKm);
+    const urgencyStrategy = getUrgencyStrategyName(form.type);
     const urgency = calculateUrgency({
       daysWithoutFood,
       waterLevelFt,
@@ -59,7 +60,7 @@ export default function ReportForm({ onSubmit }) {
       childrenPresent: form.childrenPresent,
       elderlyPresent: form.elderlyPresent,
       distanceFromAidKm,
-    });
+    }, urgencyStrategy);
 
     const report = {
       id: `voice-${Date.now()}`,
@@ -80,6 +81,7 @@ export default function ReportForm({ onSubmit }) {
       urgencyScore: urgency.score,
       urgencyZone: urgency.zone,
       urgencyFactors: urgency.factors,
+      urgencyStrategy,
       childrenPresent: form.childrenPresent,
       elderlyPresent: form.elderlyPresent,
     };

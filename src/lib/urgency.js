@@ -11,11 +11,31 @@ function numericFactor(label, value, unit, points, maxPoints) {
   };
 }
 
+// Strategy pattern. Every strategy follows the same calculate(input) contract.
+// More disaster-specific strategies can be registered without changing forms.
+const urgencyStrategies = {
+  standard: calculateStandardUrgency,
+  flood: calculateFloodUrgency,
+};
+
+export function getUrgencyStrategyName(reportType) {
+  return String(reportType || "").toLowerCase() === "flood" ? "flood" : "standard";
+}
+
+export function availableUrgencyStrategies() {
+  return Object.keys(urgencyStrategies);
+}
+
 /**
  * Calculates urgency using five factors whose maximum values total 100.
  * Null values represent missing information and never add points.
  */
-export function calculateUrgency({
+export function calculateUrgency(input = {}, strategyName = "standard") {
+  const strategy = urgencyStrategies[strategyName] || urgencyStrategies.standard;
+  return strategy(input);
+}
+
+function calculateStandardUrgency({
   daysWithoutFood,
   waterLevelFt,
   peopleCount,
@@ -85,6 +105,24 @@ export function calculateUrgency({
         maxPoints: 20,
       },
       numericFactor("Distance from Aid", distanceFromAidKm, "km", distancePoints, 15),
+    ],
+  };
+}
+
+/** Flood reports use the standard humanitarian factors plus a water-level
+ * escalation. This is intentionally isolated from the generic strategy. */
+function calculateFloodUrgency(input = {}) {
+  const base = calculateStandardUrgency(input);
+  const waterLevel = Number(input.waterLevelFt);
+  const escalation = Number.isFinite(waterLevel) && waterLevel >= 6 ? 10 : 0;
+  const score = Math.min(100, base.score + escalation);
+  return {
+    ...base,
+    score,
+    zone: score < 40 ? "green" : score < 70 ? "amber" : "red",
+    factors: [
+      ...base.factors,
+      numericFactor("Flood escalation", escalation ? waterLevel : null, "ft", escalation, 10),
     ],
   };
 }
