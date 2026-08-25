@@ -15,7 +15,9 @@ export default function MapFilters({ filters, onFilterChange }) {
   }
 
   function handleSearch(value) {
-    const city = cities.find((c) => c.toLowerCase().includes(value.toLowerCase()));
+    const city = cities.find((c) =>
+      c.toLowerCase().includes(value.toLowerCase()),
+    );
     if (city && cityCoords[city]) {
       map.flyTo(cityCoords[city], 12, { duration: 1.5 });
     }
@@ -47,6 +49,7 @@ export default function MapFilters({ filters, onFilterChange }) {
       {!isMinimized && (
         <div id="map-filter-controls" className="space-y-3 sm:space-y-4">
           <Input
+            label="Search district"
             placeholder="Search location..."
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -70,7 +73,16 @@ export default function MapFilters({ filters, onFilterChange }) {
                 />
                 <span
                   className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ background: color === "blue" ? "#3b82f6" : color === "green" ? "#16a34a" : color === "orange" ? "#f97316" : "#ef4444" }}
+                  style={{
+                    background:
+                      color === "blue"
+                        ? "#3b82f6"
+                        : color === "green"
+                          ? "#16a34a"
+                          : color === "orange"
+                            ? "#f97316"
+                            : "#ef4444",
+                  }}
                 />
                 {label}
               </label>
@@ -78,16 +90,22 @@ export default function MapFilters({ filters, onFilterChange }) {
           </div>
 
           <div>
-            <label className="flex items-center justify-between text-sm text-foreground mb-1">
+            <label
+              htmlFor="map-min-severity"
+              className="flex items-center justify-between text-sm text-foreground mb-1"
+            >
               <span>Min Severity</span>
               <Badge color="red" text={String(filters.minSeverity)} />
             </label>
             <input
+              id="map-min-severity"
               type="range"
               min={1}
               max={5}
               value={filters.minSeverity}
-              onChange={(e) => onFilterChange({ minSeverity: Number(e.target.value) })}
+              onChange={(e) =>
+                onFilterChange({ minSeverity: Number(e.target.value) })
+              }
               className="w-full accent-red-500"
             />
             <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">

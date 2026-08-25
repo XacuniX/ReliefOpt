@@ -548,8 +548,9 @@ a persisted stock log.
   Stock Items, Out of Stock, Pending Shipments). `[IMPLEMENTED]`
 - **FR-INV.2** The system shall show a low-stock alert banner listing critical
   items. `[IMPLEMENTED]`
-- **FR-INV.3** The system shall organise inventory by warehouse tabs (Warehouse A
-  through E). `[IMPLEMENTED]`
+- **FR-INV.3** The system shall organise inventory by tabs sourced from the
+  authoritative warehouse records (for example, Dhaka Central Warehouse and
+  Sylhet Relief Depot). `[IMPLEMENTED]`
 - **FR-INV.4** The system shall show each item's name, category, quantity, unit,
   status, warehouse, and last-updated timestamp.
 - **FR-INV.5** The system shall support adding and editing inventory items.

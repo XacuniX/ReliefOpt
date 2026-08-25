@@ -6,9 +6,29 @@ import { getAll, put, remove } from "../../lib/db";
 import { districtNames } from "../../lib/districts";
 import { disasterTypes } from "../../lib/disasters";
 
-
 function toNullableNumber(value) {
   return value === "" ? null : Number(value);
+}
+
+function numericValidationError(form) {
+  const values = [
+    ["Affected people count", form.affectedCount, true],
+    ["Days without food", form.daysWithoutFood, true],
+    ["Water level", form.waterLevelFt, false],
+    ["Distance from aid", form.distanceFromAidKm, false],
+  ];
+  for (const [label, value, integer] of values) {
+    if (value === "") continue;
+    const number = Number(value);
+    if (
+      !Number.isFinite(number) ||
+      number < 0 ||
+      (integer && !Number.isInteger(number))
+    ) {
+      return `${label} must be a non-negative${integer ? " whole" : ""} number.`;
+    }
+  }
+  return "";
 }
 
 function parseCoordinates(value) {
@@ -23,6 +43,7 @@ export default function ReportForm({ onSubmit }) {
   const { currentUser } = useAuth();
   const [step, setStep] = useState(1);
   const [toast, setToast] = useState(null);
+  const [validationError, setValidationError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
 
@@ -43,26 +64,53 @@ export default function ReportForm({ onSubmit }) {
 
   useEffect(() => {
     let cancelled = false;
-    getAll("drafts").then((drafts) => {
-      const draft = drafts.find((entry) => entry.id === "report-form");
-      if (!cancelled && draft?.form) {
-        setForm(draft.form);
-        setStep(draft.step || 1);
-      }
-    }).finally(() => { if (!cancelled) setDraftReady(true); });
-    return () => { cancelled = true; };
+    getAll("drafts")
+      .then((drafts) => {
+        const draft = drafts.find((entry) => entry.id === "report-form");
+        if (!cancelled && draft?.form) {
+          setForm(draft.form);
+          setStep(draft.step || 1);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDraftReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!draftReady) return;
-    void put("drafts", { id: "report-form", form, step, updatedAt: new Date().toISOString() });
+    void put("drafts", {
+      id: "report-form",
+      form,
+      step,
+      updatedAt: new Date().toISOString(),
+    });
   }, [draftReady, form, step]);
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setValidationError("");
+  }
+
+  function handleReview() {
+    const error = numericValidationError(form);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+    setStep(3);
   }
 
   async function handleSubmit() {
+    const error = numericValidationError(form);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+
     const peopleCount = toNullableNumber(form.affectedCount);
     const daysWithoutFood = toNullableNumber(form.daysWithoutFood);
     const waterLevelFt = toNullableNumber(form.waterLevelFt);
@@ -103,29 +151,33 @@ export default function ReportForm({ onSubmit }) {
       const result = await onSubmit?.(report);
       setToast({
         type: result?.status === "Accepted" ? "success" : "info",
-        message: result?.status === "Accepted"
-          ? "Report committed to Central Command."
-          : "Report saved and is pending Central Admin approval.",
+        message:
+          result?.status === "Accepted"
+            ? "Report committed to Central Command."
+            : "Report saved and is pending Central Admin approval.",
       });
       await remove("drafts", "report-form");
-    setForm({
-      district: "",
-      coordinates: "23.8103, 90.4125",
-      landmark: "",
-      type: "",
-      severity: 3,
-      description: "",
-      affectedCount: "",
-      daysWithoutFood: "",
-      waterLevelFt: "",
-      distanceFromAidKm: "",
-      childrenPresent: false,
-      elderlyPresent: false,
-    });
+      setForm({
+        district: "",
+        coordinates: "23.8103, 90.4125",
+        landmark: "",
+        type: "",
+        severity: 3,
+        description: "",
+        affectedCount: "",
+        daysWithoutFood: "",
+        waterLevelFt: "",
+        distanceFromAidKm: "",
+        childrenPresent: false,
+        elderlyPresent: false,
+      });
       setStep(1);
       setTimeout(() => setToast(null), 3000);
     } catch (error) {
-      setToast({ type: "error", message: error.message || "Report submission failed." });
+      setToast({
+        type: "error",
+        message: error.message || "Report submission failed.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -151,9 +203,20 @@ export default function ReportForm({ onSubmit }) {
           ))}
         </div>
         <p className="text-sm text-muted-foreground text-center">
-          Step {step} of 3 — {step === 1 ? "Location" : step === 2 ? "Incident Details" : "Review & Submit"}
+          Step {step} of 3 Ã¢â‚¬â€{" "}
+          {step === 1
+            ? "Location"
+            : step === 2
+              ? "Incident Details"
+              : "Review & Submit"}
         </p>
       </div>
+
+      {validationError && (
+        <p role="alert" className="text-sm text-red-600">
+          {validationError}
+        </p>
+      )}
 
       {step === 1 && (
         <div className="space-y-4">
@@ -200,7 +263,16 @@ export default function ReportForm({ onSubmit }) {
           <div>
             <label className="flex items-center justify-between text-sm font-medium text-foreground mb-1">
               <span>Severity</span>
-              <Badge color={form.severity <= 2 ? "green" : form.severity <= 3 ? "amber" : "red"} text={String(form.severity)} />
+              <Badge
+                color={
+                  form.severity <= 2
+                    ? "green"
+                    : form.severity <= 3
+                      ? "amber"
+                      : "red"
+                }
+                text={String(form.severity)}
+              />
             </label>
             <input
               type="range"
@@ -263,7 +335,9 @@ export default function ReportForm({ onSubmit }) {
               <input
                 type="checkbox"
                 checked={form.childrenPresent}
-                onChange={(e) => updateField("childrenPresent", e.target.checked)}
+                onChange={(e) =>
+                  updateField("childrenPresent", e.target.checked)
+                }
                 className="rounded accent-primary"
               />
               Children present
@@ -272,7 +346,9 @@ export default function ReportForm({ onSubmit }) {
               <input
                 type="checkbox"
                 checked={form.elderlyPresent}
-                onChange={(e) => updateField("elderlyPresent", e.target.checked)}
+                onChange={(e) =>
+                  updateField("elderlyPresent", e.target.checked)
+                }
                 className="rounded accent-primary"
               />
               Elderly present
@@ -282,7 +358,7 @@ export default function ReportForm({ onSubmit }) {
             <Button variant="outline" onClick={() => setStep(1)}>
               Back
             </Button>
-            <Button onClick={() => setStep(3)} disabled={!form.type}>
+            <Button onClick={handleReview} disabled={!form.type}>
               Next
             </Button>
           </div>
@@ -291,20 +367,25 @@ export default function ReportForm({ onSubmit }) {
 
       {step === 3 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-foreground">Review Your Report</h3>
+          <h3 className="text-lg font-bold text-foreground">
+            Review Your Report
+          </h3>
           <div className="bg-muted rounded-lg p-4 space-y-2">
             {[
               ["District", form.district],
               ["GPS Coordinates", form.coordinates],
-              ["Landmark", form.landmark || "—"],
+              ["Landmark", form.landmark || "Ã¢â‚¬â€"],
               ["Incident Type", form.type],
               ["Severity", `${form.severity}/5`],
-              ["Description", form.description || "—"],
-              ["Affected People", form.affectedCount || "—"],
+              ["Description", form.description || "Ã¢â‚¬â€"],
+              ["Affected People", form.affectedCount || "Ã¢â‚¬â€"],
               ["Children Present", form.childrenPresent ? "Yes" : "No"],
               ["Elderly Present", form.elderlyPresent ? "Yes" : "No"],
             ].map(([label, value]) => (
-              <div key={label} className="flex justify-between text-sm border-b border-border pb-1 last:border-0">
+              <div
+                key={label}
+                className="flex justify-between text-sm border-b border-border pb-1 last:border-0"
+              >
                 <span className="text-muted-foreground">{label}</span>
                 <span className="font-medium text-foreground">{value}</span>
               </div>
@@ -314,7 +395,13 @@ export default function ReportForm({ onSubmit }) {
             <Button variant="outline" onClick={() => setStep(2)}>
               Back
             </Button>
-            <Button onClick={handleSubmit} loading={submitting}>Submit Report</Button>
+            <Button
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={Boolean(numericValidationError(form))}
+            >
+              Submit Report
+            </Button>
           </div>
         </div>
       )}

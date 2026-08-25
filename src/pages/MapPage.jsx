@@ -22,9 +22,16 @@ export default function MapPage() {
 
   return (
     <div className="relative -m-3 sm:-m-6">
+      <h1 className="sr-only">Relief operations map</h1>
       <OfflineBanner />
       <MapView>
-        <Markers filters={filters} mapPins={mapPins} reports={reports} teams={teams} warehouses={warehouses} />
+        <Markers
+          filters={filters}
+          mapPins={mapPins}
+          reports={reports}
+          teams={teams}
+          warehouses={warehouses}
+        />
         <MapFilters filters={filters} onFilterChange={handleFilterChange} />
       </MapView>
       <VoiceReportModal />

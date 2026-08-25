@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -10,6 +10,8 @@ export default function Dialog({
   persistent = false,
   allowCloseButtonWhenPersistent = false,
 }) {
+  const titleId = useId();
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -40,9 +42,16 @@ export default function Dialog({
         if (!persistent && e.target === e.currentTarget) onClose?.();
       }}
     >
-      <div className="relative w-full max-w-lg max-h-[85vh] rounded-xl shadow-2xl animate-[dialog-slide-up_0.25s_ease] flex flex-col bg-white/90 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        className="relative w-full max-w-lg max-h-[85vh] rounded-xl shadow-2xl animate-[dialog-slide-up_0.25s_ease] flex flex-col bg-white/90 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20"
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-lg font-bold text-foreground m-0">{title}</h2>
+          <h2 id={titleId} className="text-lg font-bold text-foreground m-0">
+            {title}
+          </h2>
           <button
             onClick={onClose}
             disabled={persistent && !allowCloseButtonWhenPersistent}
@@ -55,6 +64,6 @@ export default function Dialog({
         <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
