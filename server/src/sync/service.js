@@ -1,4 +1,5 @@
 import { AuthoritativeRepository, ProposalRepository } from "./repository.js";
+import { createReportReference, getReportReferencePrefix } from "../../../src/lib/reportReference.js";
 
 const TYPES = new Set([
   "ADD_REPORT", "UPDATE_REPORT", "ADD_REPORT_NOTE",
@@ -91,21 +92,29 @@ export async function applyMutation(db, type, payload, actor) {
   switch (type) {
     case "ADD_REPORT": {
       const location = payload.location || {};
+      const reportedAt = payload.time || new Date().toISOString();
+      const referencePrefix = getReportReferencePrefix({ ...payload, time: reportedAt });
+      const existingReferences = await db.query(
+        "SELECT reference FROM reports WHERE reference LIKE $1",
+        [`${referencePrefix}-%`],
+      );
+      const reference = createReportReference({ ...payload, time: reportedAt }, existingReferences.rows);
       await db.query(
         `INSERT INTO reports (
            id, type, district, latitude, longitude, severity, status, submitted_by_id,
            assigned_team_id, reported_at, description, affected_count, people_count,
            days_without_food, water_level_ft, distance_from_aid_km, urgency_score,
-           urgency_zone, urgency_factors, children_present, elderly_present, notes
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,$20,$21,$22::jsonb)`,
+           urgency_zone, urgency_factors, children_present, elderly_present, notes, reference
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,$20,$21,$22::jsonb,$23)`,
         [
           text(payload.id, "Report ID", 100), text(payload.type, "Report type", 100), payload.district || null,
           location.lat ?? null, location.lng ?? null, Number(payload.severity), payload.status || "Pending",
-          actor.id, payload.assignedTeamId || null, payload.time || new Date().toISOString(), payload.description || "",
+          actor.id, payload.assignedTeamId || null, reportedAt, payload.description || "",
           payload.affectedCount ?? 0, payload.peopleCount ?? payload.affectedCount ?? 0,
           payload.daysWithoutFood ?? 0, payload.waterLevelFt ?? 0, payload.distanceFromAidKm ?? 0,
           payload.urgencyScore ?? 0, payload.urgencyZone || "green", JSON.stringify(payload.urgencyFactors || []),
           payload.childrenPresent ?? false, payload.elderlyPresent ?? false, JSON.stringify(payload.notes || []),
+          reference,
         ],
       );
       return;

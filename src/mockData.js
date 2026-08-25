@@ -213,6 +213,7 @@ export const teams = [
 export const reports = [
   {
     id: "r1",
+    reference: "SYL-20260725-0001",
     type: "Flood",
     district: "Sylhet",
     location: { lat: 24.8949, lng: 91.8687 },
@@ -230,6 +231,7 @@ export const reports = [
   },
   {
     id: "r2",
+    reference: "BSL-20260726-0001",
     type: "Cyclone",
     district: "Barishal",
     location: { lat: 22.701, lng: 90.3535 },
@@ -247,6 +249,7 @@ export const reports = [
   },
   {
     id: "r3",
+    reference: "RGP-20260720-0001",
     type: "Earthquake",
     district: "Rangpur",
     location: { lat: 25.7439, lng: 89.2752 },
@@ -264,6 +267,7 @@ export const reports = [
   },
   {
     id: "r4",
+    reference: "CML-20260725-0001",
     type: "Fire",
     district: "Cumilla",
     location: { lat: 23.4607, lng: 91.1809 },
@@ -281,6 +285,7 @@ export const reports = [
   },
   {
     id: "r5",
+    reference: "MYM-20260726-0001",
     type: "Flood",
     district: "Mymensingh",
     location: { lat: 24.7471, lng: 90.4203 },
@@ -298,6 +303,7 @@ export const reports = [
   },
   {
     id: "r6",
+    reference: "CTG-20260726-0001",
     type: "Cyclone",
     district: "Chattogram",
     location: { lat: 22.3569, lng: 91.7832 },
@@ -315,6 +321,7 @@ export const reports = [
   },
   {
     id: "r7",
+    reference: "DHK-20260722-0001",
     type: "Other",
     district: "Dhaka",
     location: { lat: 23.8103, lng: 90.4125 },
@@ -332,6 +339,7 @@ export const reports = [
   },
   {
     id: "r8",
+    reference: "NOK-20260725-0001",
     type: "Flood",
     district: "Noakhali",
     location: { lat: 22.8696, lng: 91.0995 },
@@ -349,6 +357,7 @@ export const reports = [
   },
   {
     id: "r9",
+    reference: "RJH-20260721-0001",
     type: "Fire",
     district: "Rajshahi",
     location: { lat: 24.3745, lng: 88.6042 },
@@ -366,6 +375,7 @@ export const reports = [
   },
   {
     id: "r10",
+    reference: "KHL-20260726-0001",
     type: "Flood",
     district: "Khulna",
     location: { lat: 22.8456, lng: 89.5403 },
@@ -812,19 +822,7 @@ export const alerts = [
 ];
 
 // ─── City Coordinates ─────────────────────────────────────────────────────────
-export const cityCoords = {
-  Sylhet: [24.8949, 91.8687],
-  Barishal: [22.7010, 90.3535],
-  Rangpur: [25.7439, 89.2752],
-  Cumilla: [23.4607, 91.1809],
-  Dhaka: [23.8103, 90.4125],
-  Chattogram: [22.3569, 91.7832],
-  Mymensingh: [24.7471, 90.4203],
-  Noakhali: [22.8696, 91.0995],
-  Khulna: [22.8456, 89.5403],
-  Rajshahi: [24.3745, 88.6042],
-  Mirpur: [23.8041, 90.3665],
-};
+export { districtCoords as cityCoords } from "./lib/districts.js";
 
 // ─── Supply Drops ─────────────────────────────────────────────────────────────
 export const supplyDrops = [

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Modal, Select, Textarea } from "../ui";
+import { getReportReference } from "../../lib/reportReference";
 
 const emptyForm = {
   title: "", description: "", priority: "Medium", assignedTeamId: "", assignedUserId: "",
@@ -72,7 +73,7 @@ export default function CreateTaskModal({ isOpen, onClose, onCreate, teams = [],
           value={form.linkedReportId}
           onChange={(event) => update("linkedReportId", event.target.value)}
           options={[{ value: "", label: "No linked report" }, ...openReports.map((report) => ({
-            value: report.id, label: `${report.id} — ${report.district || report.type}`,
+            value: report.id, label: `${getReportReference(report)} — ${report.district || report.type}`,
           }))]}
         />
         <fieldset className="border rounded-md p-3 mb-4">

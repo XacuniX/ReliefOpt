@@ -12,7 +12,8 @@
 /**
  * @typedef {Object} VoiceExtraction // produced by RKN's src/lib/extract.js
  * @property {string} transcript
- * @property {string} language       // "bn" | "en"
+ * @property {"en"} language
+ * @property {string|null} disasterType
  * @property {string|null} location  // must match a key in mockData.cityCoords
  * @property {number|null} waterLevelFt
  * @property {number|null} peopleCount

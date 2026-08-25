@@ -6,6 +6,7 @@ function json(value, fallback) {
 function mapReport(row) {
   return {
     id: row.id,
+    reference: row.reference || null,
     type: row.type,
     district: row.district || "",
     location: row.latitude == null || row.longitude == null

@@ -6,6 +6,7 @@ import UrgencyGauge from "./UrgencyGauge";
 import { cityCoords } from "../../mockData";
 import { calculateUrgency } from "../../lib/urgency";
 import { useData } from "../../context/DataContext";
+import { getReportReference } from "../../lib/reportReference";
 
 export default function ReportDrawer({ report, isOpen, onClose }) {
   const { teams, updateReport, addReportNote } = useData();
@@ -62,7 +63,7 @@ export default function ReportDrawer({ report, isOpen, onClose }) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-foreground">{report.type}</h2>
-            <p className="text-sm text-muted-foreground">Report #{report.id}</p>
+            <p className="text-sm text-muted-foreground">Report #{getReportReference(report)}</p>
           </div>
           <Badge
             color={

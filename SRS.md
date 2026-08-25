@@ -6,8 +6,8 @@
 |---|---|
 | **Document** | Software Requirements Specification (SRS) |
 | **Project** | ReliefOpt |
-| **Version** | 2.2 |
-| **Date** | 2026-08-23 |
+| **Version** | 2.3 |
+| **Date** | 2026-08-25 |
 | **Status** | Implemented baseline with separately tracked validation gaps |
 | **Standard** | IEEE 830 / ISO/IEC/IEEE 29148 |
 | **Platform** | Client-server Progressive Web App (PWA), offline-first |
@@ -36,7 +36,7 @@
 
 This document specifies the software requirements for **ReliefOpt**, a map-based,
 role-driven disaster relief coordination dashboard for Bangladesh. ReliefOpt lets
-relief workers file emergency reports (including by voice in Bangla), track
+relief workers file emergency reports (including by English voice input), track
 inventory across warehouses, manage response tasks, optimise cargo packing, and
 continue operating when connectivity is unavailable.
 
@@ -66,7 +66,8 @@ authoritative snapshot plus a local outbox of pending proposals.
 - Notifications.
 - Online management mode (connected to Central Command) and offline degraded
   mode (local cache + proposal outbox).
-- In-browser Bangla speech-to-text reporting.
+- Local, English-only Whisper speech-to-text reporting with structured district
+  and disaster-field extraction.
 - Peer-to-peer snapshot relay over WebRTC for offline environments.
 - Central-Command-Authoritative, Snapshot-Propagated synchronization (see
   Sections 3.14–3.19).
@@ -79,6 +80,9 @@ authoritative snapshot plus a local outbox of pending proposals.
   signalling service. Peer connections are same-device or manual copy/paste.
 - It does not merge proposals peer-to-peer; P2P is snapshot-only and used only
   as a degraded offline fallback.
+- It does not provide Bangla or Banglish speech-to-text, translation,
+  transliteration, a speech-language selector, or browser-native speech
+  recognition. Voice transcription is English-only and model-based.
 - It does not enforce TypeScript-level type safety (plain JavaScript is used).
 
 ### 1.3 Definitions, Acronyms, and Abbreviations
@@ -105,7 +109,7 @@ authoritative snapshot plus a local outbox of pending proposals.
 | **SSoT** | Single Source of Truth — Central Command's PostgreSQL-backed authoritative state |
 | **JWT** | JSON Web Token — the signed access token issued by Central Command on login |
 | **snapshotSeq** | The monotonically increasing server-assigned sequence number that orders snapshots |
-| **Whisper** | The speech-to-text model (`Xenova/whisper-base`) used for in-browser transcription |
+| **Whisper** | The English-only speech-to-text model (`Xenova/whisper-base.en`) used for local transcription |
 
 ### 1.4 References
 
@@ -120,7 +124,8 @@ The following files are the authoritative sources for the current client code:
 - `src/main.jsx` — application entry point.
 - `src/context/` — `AuthContext`, `DataContext`, `OfflineContext`, `ThemeContext`.
 - `src/lib/` — `db.js`, `sync.js`, `p2p.js`, `urgency.js`, `packing.js`,
-  `speech.js`, `extract.js`, `tileCache.js`, `contracts.js`, `utils.js`.
+  `speech.js`, `speechAudio.js`, `extract.js`, `districts.js`, `disasters.js`,
+  `tileCache.js`, `contracts.js`, `utils.js`.
 - `src/mockData.js` — seed/demo data and domain entity shapes.
 - `src/components/` and `src/pages/` — UI and route-level components.
 
@@ -228,8 +233,9 @@ flowchart TD
     P2P --> Peer[Peer Device]
     Tiles --> TileDB
     Tiles --> OSM[OpenStreetMap CDN]
-    Speech --> Whisper[HuggingFace Whisper Model]
-    Extract --> Mock[mockData.js cityCoords]
+    Speech --> Whisper[HuggingFace Whisper Base English]
+    Extract --> Districts[districts.js: 64 districts]
+    Extract --> Disasters[disasters.js: disaster vocabulary]
     DBLib --> IDB
 ```
 
@@ -272,8 +278,10 @@ Client and server environments are defined by their package and configuration fi
 - **Protocols:** `http://localhost` or `https://` for the PWA client (required
   for microphone, service worker, and PWA features); the backend exposes an HTTP
   API over `http://localhost` or `https://`.
-- **Speech model:** `Xenova/whisper-base`, quantised (`dtype: "q8"`), run via
-  WebGPU where available with a WASM fallback.
+- **Speech model:** English-only `Xenova/whisper-base.en`, run via WebGPU where
+  available with a WASM fallback. The web build uses quantised `q8` weights,
+  downloaded and cached on first use. The Android build packages quantised
+  `q4f16` weights with the APK so Android users do not download the model.
 
 ### 2.4 Design and Implementation Constraints
 
@@ -282,20 +290,22 @@ Client and server environments are defined by their package and configuration fi
 - The client uses plain JavaScript (`.jsx`) — no TypeScript enforcement of types.
 - WebRTC operates without STUN/TURN servers (local network only) and is a
   demo-only degraded-mode fallback.
-- Speech recognition runs client-side using a quantised Whisper model.
+- Speech recognition runs locally using only the quantised English Whisper
+  model; browser-native speech-recognition services are not used.
 - Peer-to-peer transfers are snapshot-only; proposals are never merged P2P.
 - Authentication uses JWT bearer tokens with bcrypt-hashed passwords.
 
 ### 2.5 Assumptions and Dependencies
 
 - The browser supports IndexedDB, `localStorage`, `sessionStorage`,
-  `MediaRecorder`, `AudioContext`, and (optionally) WebGPU.
+  `getUserMedia`, `AudioContext`, and (optionally) WebGPU.
 - The Central Command backend is available during online operation; offline
   operation degrades to cached data and P2P snapshot relay.
 - A valid cached JWT keeps the user authenticated offline; fresh offline login is
   not possible.
-- First use of speech recognition requires internet to download the Whisper
-  model; afterwards it is cached for offline use.
+- First use of speech recognition in a web browser requires internet to download
+  the Whisper model; afterwards it is cached for offline use. The Android APK
+  includes the model and does not require this first-use download.
 - OpenStreetMap tile servers are accessed conservatively (bounded pre-fetch,
   limited concurrency, LRU eviction).
 - Snapshot ordering uses a server-assigned monotonic `snapshotSeq`; peers compare
@@ -438,9 +448,10 @@ voice-report pinning, and an offline banner.
 - **FR-MAP.3** The system shall display categorised markers for teams,
   warehouses, supply drops, severity zones, and voice-report pins.
 - **FR-MAP.4** The system shall provide a filter panel with toggles for each
-  marker category and a minimum-severity slider.
+  marker category and a minimum-severity slider, and the panel shall be
+  minimizable. `[IMPLEMENTED]`
 - **FR-MAP.5** The system shall provide a location search that flies the map to
-  a matched city. `[IMPLEMENTED]`
+  a matched Bangladesh district. `[IMPLEMENTED]`
 - **FR-MAP.6** The system shall display an offline banner when the device is
   offline. `[IMPLEMENTED]`
 - **FR-MAP.7** The system shall provide a "Download this area for offline use"
@@ -451,34 +462,54 @@ voice-report pinning, and an offline banner.
 
 ### 3.6 Voice Reporting (Speech-to-Text)
 
-**Source:** `src/lib/speech.js`, `src/lib/extract.js`,
+**Source:** `src/lib/speech.js`, `src/lib/speechAudio.js`, `src/lib/extract.js`,
+`src/lib/districts.js`, `src/lib/disasters.js`,
 `src/components/map/VoiceReportModal.jsx`.
 
-**Description:** In-browser Bangla/English voice capture, transcription, and
-field extraction, producing a scored report and a map pin.
+**Description:** Local English-only voice capture and Whisper transcription with
+district, disaster-type, and emergency-detail extraction, producing a scored
+report and a map pin. Bangla/Banglish transcription and language selection have
+been intentionally removed.
 
 - **FR-VOICE.1** The system shall capture audio from the microphone using
-  `getUserMedia` and `MediaRecorder`. `[IMPLEMENTED]`
+  `getUserMedia` and `AudioContext`, retaining raw PCM samples without passing
+  through `MediaRecorder` codecs. `[IMPLEMENTED]`
 - **FR-VOICE.2** The system shall transcribe captured audio to text using the
-  `Xenova/whisper-base` model loaded via `@huggingface/transformers`.
-- **FR-VOICE.3** The system shall support Bangla and English transcription,
-  defaulting to Bangla. `[IMPLEMENTED]`
-- **FR-VOICE.4** The system shall show a progress indicator while the speech
-  model downloads on first use. `[IMPLEMENTED]`
+  English-only `Xenova/whisper-base.en` model loaded via
+  `@huggingface/transformers`. `[IMPLEMENTED]`
+- **FR-VOICE.3** The system shall accept English speech only and shall not show
+  Bangla/English language controls, translate or transliterate Bangla, or call
+  browser-native speech-recognition services. `[IMPLEMENTED]`
+- **FR-VOICE.4** The system shall show web users a progress indicator while the
+  speech model downloads on first use and shall load the bundled model directly
+  in the Android app. `[IMPLEMENTED]`
 - **FR-VOICE.5** The system shall convert recorded audio to 16,000 Hz mono
-  `Float32Array` before transcription. `[IMPLEMENTED]`
+  `Float32Array`, trim silence, and normalize usable quiet speech before
+  transcription. `[IMPLEMENTED]`
 - **FR-VOICE.6** The system shall extract structured fields from a transcript,
-  including location, water level (feet), people count, days without food,
-  children present, and elderly present. `[IMPLEMENTED]`
-- **FR-VOICE.7** Field extraction shall match both Bengali script and romanised
-  ("Banglish") spellings, and normalise Bengali digits to Arabic numerals.
+  including disaster type, district, water level (feet), people count, days
+  without food, children present, and elderly present. `[IMPLEMENTED]`
+- **FR-VOICE.7** District extraction shall recognize all 64 Bangladesh district
+  names plus common former spellings and likely English transcription variants.
+  Disaster extraction shall recognize the supported natural and human-caused
+  categories and their common synonyms. `[IMPLEMENTED]`
 - **FR-VOICE.8** Missing extracted values shall be `null`, never `0`.
 - **FR-VOICE.9** The system shall present an editable transcript and extracted
-  fields for user confirmation before submission. `[IMPLEMENTED]`
+  fields for user confirmation before submission, and shall require the user to
+  confirm both disaster type and district. `[IMPLEMENTED]`
 - **FR-VOICE.10** On confirmation, the system shall create a report scored by
-  the urgency algorithm, persist it, and drop a map pin. `[IMPLEMENTED]`
+  the urgency algorithm using the confirmed disaster type and district, persist
+  it, and drop a map pin. `[IMPLEMENTED]`
 - **FR-VOICE.11** The system shall provide a manual "type it instead" fallback
   when the microphone or model fails. `[IMPLEMENTED]`
+- **FR-VOICE.12** The system shall display microphone input activity and a
+  remaining-time progress bar, and shall automatically stop recording at the
+  30-second cap. `[IMPLEMENTED]`
+- **FR-VOICE.13** The disaster vocabulary shall include Flood, Cyclone,
+  Earthquake, Fire, Landslide, Drought, River Erosion, Tornado, Thunderstorm,
+  Heatwave, Cold Wave, Tsunami, Epidemic, Building Collapse, Explosion,
+  Chemical Spill, Transport Accident, and Other. `[IMPLEMENTED]`
+
 
 ### 3.7 Emergency Reports
 
@@ -757,8 +788,8 @@ visual output and export.
 
 ### 4.2 Hardware Interfaces
 
-- **Microphone:** required for voice reporting (`getUserMedia`,
-  `MediaRecorder`).
+- **Microphone:** required for voice reporting (`getUserMedia`, `AudioContext`),
+  with selectable input devices where the browser exposes device labels.
 - **Display:** responsive layouts from mobile to desktop.
 - **No other embedded/IoT hardware interfaces are present in the codebase.**
 
@@ -866,9 +897,12 @@ merging and resolving server-side conflicts deterministically:
 ### 5.4 Usability and Accessibility
 
 - The UI shall be responsive and role-appropriate.
-- The speech model download progress shall be visible to the user.
-  `[IMPLEMENTED]`
-- Voice-report fields shall be editable before submission. `[IMPLEMENTED]`
+- Web speech-model download progress shall be visible to the user; Android shall
+  identify that its model is bundled. `[IMPLEMENTED]`
+- Voice-report fields shall be editable before submission, and the disaster type
+  and district shall be required. `[IMPLEMENTED]`
+- Voice recording shall show microphone activity and the remaining portion of
+  the 30-second recording limit. `[IMPLEMENTED]`
 - Dialogs shall be non-dismissible during in-progress voice-report states
   (loading, recording, transcribing). `[IMPLEMENTED — see VoiceReportModal
   `persistent` prop]`
@@ -928,8 +962,8 @@ Derived from `src/mockData.js` and `src/lib/db.js`.
 Documented in `src/lib/contracts.js`:
 
 - **UrgencyResult** — `{ totalScore, zone, factors[] }`
-- **VoiceExtraction** — `{ transcript, language, location, waterLevelFt,
-  peopleCount, childrenPresent, elderlyPresent, daysWithoutFood }`
+- **VoiceExtraction** — `{ transcript, language: "en", disasterType, location,
+  waterLevelFt, peopleCount, childrenPresent, elderlyPresent, daysWithoutFood }`
 - **SyncQueueEntry** — `{ id, actionType, payload, status, timestamp }`
 - **BoxPlacement** — `{ boxId, name, category, x, y, z, w, h, d }`
 
@@ -1089,7 +1123,7 @@ server APIs and repositories are implemented under `server/src`.
 | FR-DATA.* | `src/lib/db.js`, `src/context/DataContext.jsx` |
 | FR-DASH.* | `src/components/dashboard/*`, `src/pages/DashboardPage.jsx` |
 | FR-MAP.* | `src/components/map/*`, `src/lib/tileCache.js` |
-| FR-VOICE.* | `src/lib/speech.js`, `src/lib/extract.js`, `src/components/map/VoiceReportModal.jsx` |
+| FR-VOICE.* | `src/lib/speech.js`, `src/lib/speechAudio.js`, `src/lib/extract.js`, `src/lib/districts.js`, `src/lib/disasters.js`, `src/components/map/VoiceReportModal.jsx` |
 | FR-REPORT.* | `src/pages/ReportsPage.jsx`, `src/components/reports/*` |
 | FR-INV.* | `src/pages/InventoryPage.jsx`, `src/components/inventory/*` |
 | FR-TASK.* | `src/pages/TasksPage.jsx`, `src/components/tasks/*` |
@@ -1112,7 +1146,7 @@ remains the target specification; status is tracked separately here.
 | FR-DATA.1–9 | Implemented | `server/migrations/*`, `src/lib/db.js`, `src/context/DataContext.jsx` | `test/db.test.js`, `server/test/integration.test.js`, `server/test/sync.test.js` |
 | FR-DASH.1–5 | Implemented | `src/pages/DashboardPage.jsx`, `src/components/dashboard/*` | desktop/mobile visual sweep in `e2e/visual.spec.js` |
 | FR-MAP.1–4 | Implemented | `src/pages/MapPage.jsx`, `src/components/map/*`, `src/lib/tileCache.js` | desktop/mobile screenshot and overflow checks |
-| FR-VOICE.* | Implemented; model download requires network on first use | `src/lib/speech.js`, `src/lib/extract.js`, `VoiceReportModal.jsx` | `test/extract.test.js`; microphone/model flow requires personal validation |
+| FR-VOICE.* | Implemented; web model download requires network on first use; Android model is bundled | `src/lib/speech.js`, `src/lib/speechAudio.js`, `src/lib/extract.js`, `src/lib/districts.js`, `src/lib/disasters.js`, `VoiceReportModal.jsx` | `test/speechAudio.test.js`, `test/extract.test.js`, `test/districts.test.js`, `test/disasters.test.js`; microphone/model flow requires device validation |
 | FR-REPORT.* | Implemented | report page/components and proposal mutations | `e2e/workflows.spec.js`, `server/test/sync.test.js` |
 | FR-INV.* | Implemented for coordinator roles | inventory components and atomic inventory/stock-log mutations | server sync tests and E2E route validation |
 | FR-TASK.* | Implemented; field task creation intentionally prohibited | task components, ID-based assignments | RBAC and production-build validation |

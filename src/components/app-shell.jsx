@@ -10,6 +10,7 @@ import {
   CheckSquare,
   Truck,
   Users,
+  ClipboardCheck,
   Settings,
   Sun,
   Moon,
@@ -37,6 +38,7 @@ const navItems = [
   { key: "tasks", route: ROUTES.TASKS, icon: CheckSquare, roles: null },
   { key: "cargo", route: ROUTES.CARGO, icon: Truck, roles: ["warehouse_manager", "central_admin"] },
   { key: "users", route: ROUTES.USERS, icon: Users, roles: ["central_admin"] },
+  { key: "approvals", route: ROUTES.APPROVALS, icon: ClipboardCheck, roles: ["central_admin"] },
   { key: "settings", route: ROUTES.SETTINGS, icon: Settings, roles: null },
 ];
 
@@ -130,7 +132,7 @@ export function AppShell({ children }) {
   const isDark = resolvedTheme === "dark";
 
   return (
-    <div className="app-gradient relative flex h-screen overflow-hidden text-foreground antialiased">
+    <div className="app-gradient app-safe-area relative flex h-screen overflow-hidden text-foreground antialiased">
       {/* Ambient teal glows */}
       <div
         aria-hidden
@@ -149,7 +151,7 @@ export function AppShell({ children }) {
 
       {/* Sidebar */}
       {mobileOpen && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-teal-500/10 bg-[#0b1215]/95 backdrop-blur-md transition-transform md:static md:z-10 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`app-safe-area-sidebar fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-teal-500/10 bg-[#0b1215]/95 backdrop-blur-md transition-transform md:static md:z-10 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {/* Brand */}
         <div className="flex h-16 items-center gap-2.5 px-6">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 text-zinc-950 shadow-[0_0_16px_rgba(20,184,166,0.45)]">

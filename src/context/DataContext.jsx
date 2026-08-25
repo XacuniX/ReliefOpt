@@ -14,6 +14,7 @@ import {
   submitProposal,
 } from "../lib/syncApi";
 import { AuthApiError } from "../lib/authApi";
+import { createReportReference } from "../lib/reportReference";
 import { useAuth } from "./AuthContext";
 import { useOffline } from "./OfflineContext";
 
@@ -314,6 +315,10 @@ export function DataProvider({ children }) {
     return acceptSnapshot(snapshot, { fromPeer: true });
   }
 
+  async function applyNearbySnapshot(snapshot) {
+    return acceptSnapshot(snapshot, { fromPeer: true });
+  }
+
   function authoritativeSnapshotForPeer() {
     return authoritativeRef.current;
   }
@@ -345,7 +350,13 @@ export function DataProvider({ children }) {
     snapshotSeq,
     lastSyncedAt,
 
-    addReport: (report) => mutate("ADD_REPORT", { ...report, id: report.id || crypto.randomUUID() }),
+    addReport: (report) => {
+      const payload = { ...report, id: report.id || crypto.randomUUID() };
+      return mutate("ADD_REPORT", {
+        ...payload,
+        reference: report.reference || createReportReference(payload, stateRef.current.reports),
+      });
+    },
     updateReport: (id, patch) => mutate("UPDATE_REPORT", { id, patch }),
     addReportNote: (id, note) => mutate("ADD_REPORT_NOTE", {
       id, note: { id: note.id || crypto.randomUUID(), text: note.text, timestamp: note.timestamp || new Date().toISOString() },
@@ -371,6 +382,7 @@ export function DataProvider({ children }) {
     drainQueue: syncNow,
     refreshSnapshot: pullSnapshot,
     applyPeerSnapshot,
+    applyNearbySnapshot,
     authoritativeSnapshotForPeer,
   };
 

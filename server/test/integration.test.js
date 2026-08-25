@@ -49,7 +49,7 @@ test("migration creates every authoritative table", async () => {
 test("migration is idempotent", async () => {
   const result = await runMigrations({ db: pool });
   assert.deepEqual(result.applied, []);
-  assert.equal(result.total, 3);
+  assert.equal(result.total, 4);
 });
 
 test("demo seeding stores bcrypt hashes and is idempotent", async () => {

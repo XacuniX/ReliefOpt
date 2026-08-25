@@ -12,11 +12,21 @@ export default [
       "playwright-report/**",
       "test-results/**",
       "artifacts/**",
+      "android/**",
+      ".gradle-user/**",
+      ".android-sdk/**",
+      ".android-user/**",
     ],
   },
   js.configs.recommended,
   {
-    files: ["src/**/*.{js,jsx}", "e2e/**/*.js", "test/**/*.js", "*.js"],
+    files: [
+      "src/**/*.{js,jsx}",
+      "e2e/**/*.js",
+      "test/**/*.js",
+      "scripts/**/*.{js,mjs}",
+      "*.js",
+    ],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

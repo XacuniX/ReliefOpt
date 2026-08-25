@@ -16,6 +16,7 @@ const InventoryPage = lazy(() => import("./pages/InventoryPage"));
 const TasksPage = lazy(() => import("./pages/TasksPage"));
 const CargoPage = lazy(() => import("./pages/CargoPage"));
 const UsersPage = lazy(() => import("./pages/UsersPage"));
+const ApprovalsPage = lazy(() => import("./pages/ApprovalsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 
 function ProtectedRoute({ path, children }) {
@@ -58,6 +59,7 @@ function AuthRoutes() {
         <Route path={ROUTES.TASKS} element={<ProtectedRoute path={ROUTES.TASKS}><TasksPage /></ProtectedRoute>} />
         <Route path={ROUTES.CARGO} element={<ProtectedRoute path={ROUTES.CARGO}><CargoPage /></ProtectedRoute>} />
         <Route path={ROUTES.USERS} element={<ProtectedRoute path={ROUTES.USERS}><UsersPage /></ProtectedRoute>} />
+        <Route path={ROUTES.APPROVALS} element={<ProtectedRoute path={ROUTES.APPROVALS}><ApprovalsPage /></ProtectedRoute>} />
         <Route path={ROUTES.SETTINGS} element={<ProtectedRoute path={ROUTES.SETTINGS}><SettingsPage /></ProtectedRoute>} />
       </Route>
       <Route
