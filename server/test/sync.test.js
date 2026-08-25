@@ -84,6 +84,7 @@ test("proposal submission is idempotent and approval advances the snapshot", asy
   const report = {
     id: "sync-report", type: "Flood", district: "Dhaka",
     location: { lat: 23.81, lng: 90.41 }, severity: 4,
+    time: "2026-08-25T10:00:00.000Z",
     description: "Flooding reported by synchronization test", affectedCount: 25,
   };
   const first = await submit(workerToken, "proposal-add-report", "ADD_REPORT", report);
@@ -107,6 +108,7 @@ test("proposal submission is idempotent and approval advances the snapshot", asy
   const snapshot = await (await request("/api/snapshot", { token: workerToken })).json();
   assert.equal(snapshot.snapshotSeq, 1);
   assert.equal(snapshot.data.reports[0].id, "sync-report");
+  assert.equal(snapshot.data.reports[0].reference, "DHK-20260825-0001");
   assert.equal(snapshot.data.reports[0].submittedById, "sync-worker");
 
   const retryDecision = await request("/api/proposals/proposal-add-report/decision", {

@@ -7,6 +7,7 @@ export const ROUTE_ROLES = Object.freeze({
   "/tasks": ["central_admin", "warehouse_manager", "field_worker"],
   "/cargo": ["central_admin", "warehouse_manager"],
   "/users": ["central_admin"],
+  "/approvals": ["central_admin"],
   "/settings": ["central_admin", "warehouse_manager", "field_worker"],
 });
 

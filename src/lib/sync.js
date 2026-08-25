@@ -1,4 +1,4 @@
-/** Real offline sync queue helpers. See TASKS.md Task R3. */
+/** Offline sync queue helpers for replayable client changes. */
 
 /**
  * Builds a queue entry with a real object payload (never a display string).

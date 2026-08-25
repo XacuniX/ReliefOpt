@@ -5,7 +5,7 @@ const PreferencesContext = createContext(null);
 const dictionaries = {
   English: {
     dashboard: "Dashboard", map: "Map", reports: "Reports", submitReport: "Submit Report",
-    inventory: "Inventory", tasks: "Tasks", cargo: "Cargo", users: "Users", settings: "Settings",
+    inventory: "Inventory", tasks: "Tasks", cargo: "Cargo", users: "Users", approvals: "Approvals", settings: "Settings",
     preferences: "Preferences", profile: "Profile", about: "About", language: "Language",
     notificationSounds: "Notification sounds", clearCache: "Clear Cache", lastSync: "Last Sync",
   },

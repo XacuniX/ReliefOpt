@@ -3,14 +3,9 @@ import { Button, Input, Select, Textarea, Toast, Badge } from "../ui";
 import { calculateUrgency } from "../../lib/urgency";
 import { useAuth } from "../../context/AuthContext";
 import { getAll, put, remove } from "../../lib/db";
+import { districtNames } from "../../lib/districts";
+import { disasterTypes } from "../../lib/disasters";
 
-const districts = [
-  "Dhaka", "Chattogram", "Khulna", "Rajshahi", "Sylhet", "Barishal",
-  "Rangpur", "Mymensingh", "Cumilla", "Noakhali", "Feni", "Bogra",
-  "Jessore", "Dinajpur", "Tangail", "Faridpur", "Pabna", "Kushtia",
-];
-
-const incidentTypes = ["Flood", "Cyclone", "Earthquake", "Fire", "Other"];
 
 function toNullableNumber(value) {
   return value === "" ? null : Number(value);
@@ -168,7 +163,7 @@ export default function ReportForm({ onSubmit }) {
             onChange={(e) => updateField("district", e.target.value)}
             options={[
               { value: "", label: "Select district..." },
-              ...districts.map((d) => ({ value: d, label: d })),
+              ...districtNames.map((d) => ({ value: d, label: d })),
             ]}
           />
           <Input
@@ -199,7 +194,7 @@ export default function ReportForm({ onSubmit }) {
             onChange={(e) => updateField("type", e.target.value)}
             options={[
               { value: "", label: "Select type..." },
-              ...incidentTypes.map((t) => ({ value: t, label: t })),
+              ...disasterTypes.map((t) => ({ value: t, label: t })),
             ]}
           />
           <div>

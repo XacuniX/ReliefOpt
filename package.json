@@ -17,9 +17,15 @@
     "server:start": "npm --prefix server run start",
     "server:migrate": "npm --prefix server run migrate",
     "server:seed:demo": "npm --prefix server run seed:demo",
-    "server:test": "npm --prefix server run test"
+    "server:test": "npm --prefix server run test",
+    "android:download-model": "node scripts/download-android-whisper-model.mjs",
+    "android:sync-assets": "node scripts/sync-android-assets.mjs",
+    "android:sync": "npm run build && npx cap sync android && npm run android:sync-assets",
+    "android:build": "npm run android:sync && cd android && gradlew.bat assembleDebug"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@huggingface/transformers": "^4.2.0",
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-collapsible": "^1.1.20",
@@ -42,6 +48,7 @@
     "vite": "^6.4.3"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "eslint": "^10.9.0",

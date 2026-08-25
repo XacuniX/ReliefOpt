@@ -1,4 +1,5 @@
-import { cityCoords } from "../mockData.js";
+import { districtCoords as cityCoords, findDistrictName } from "./districts.js";
+import { findDisasterType } from "./disasters.js";
 
 const BN_DIGITS = {
   "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
@@ -15,6 +16,19 @@ const KEYWORDS = {
   elderly: ["বৃদ্ধ", "বয়স্ক", "briddho", "boyosko", "elderly", "old"],
   food: ["খাবার", "খাওয়া", "khabar", "khawa", "food"],
   days: ["দিন", "din", "day", "days"],
+};
+
+const EXTRA_KEYWORDS = {
+  water: ["floodwater", "flood water", "water level", "submerged", "inundated"],
+  feet: ["ft"],
+  people: [
+    "person", "persons", "resident", "residents", "family", "families", "victim",
+    "victims", "survivor", "survivors", "stranded", "missing", "injured", "affected",
+  ],
+  children: ["child", "kid", "infant", "infants", "baby", "babies", "minor", "minors"],
+  elderly: ["senior", "seniors", "older person", "older people", "older adult", "older adults"],
+  food: ["meal", "meals", "ration", "rations", "hungry", "starving"],
+  days: [],
 };
 
 const BN_CITY_NAMES = {
@@ -36,7 +50,7 @@ function findKeywordHits(text, categories) {
   const hits = [];
   const lowerText = text.toLowerCase();
   for (const category of categories) {
-    for (const alias of KEYWORDS[category]) {
+    for (const alias of [...KEYWORDS[category], ...(EXTRA_KEYWORDS[category] || [])]) {
       const lower = alias.toLowerCase();
       let from = 0;
       let index = lowerText.indexOf(lower, from);
@@ -74,14 +88,16 @@ export function extractFields(rawTranscript) {
   const peopleHits = findKeywordHits(text, ["people"]);
   const daysHits = findKeywordHits(text, ["days"]);
   const foodHits = findKeywordHits(text, ["food"]);
-  const matchedLocation = Object.entries(LOCATIONS).find(([, aliases]) =>
+  const matchedDistrict = findDistrictName(text);
+  const matchedLegacyLocation = Object.entries(LOCATIONS).find(([, aliases]) =>
     aliases.some((alias) => text.toLowerCase().includes(alias)),
   );
 
   return {
     transcript: rawTranscript,
-    language: "bn",
-    location: matchedLocation ? matchedLocation[0] : null,
+    language: "en",
+    location: matchedDistrict ?? (matchedLegacyLocation ? matchedLegacyLocation[0] : null),
+    disasterType: findDisasterType(text),
     waterLevelFt: nearestNumber(numbers, waterHits),
     peopleCount: nearestNumber(numbers, peopleHits),
     childrenPresent: findKeywordHits(text, ["children"]).length > 0,

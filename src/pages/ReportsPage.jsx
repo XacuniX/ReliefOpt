@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { Input, Select, Table, Badge } from "../components/ui";
 import ReportDrawer from "../components/reports/ReportDrawer";
 import { useData } from "../context/DataContext";
+import { getReportReference } from "../lib/reportReference";
+import { disasterTypes } from "../lib/disasters";
 
 const typeColors = {
   Flood: "blue",
@@ -36,6 +38,7 @@ export default function ReportsPage() {
       const q = search.toLowerCase();
       result = result.filter(
         (r) =>
+          getReportReference(r).toLowerCase().includes(q) ||
           r.id.toLowerCase().includes(q) ||
           (r.district || "").toLowerCase().includes(q) ||
           r.submittedBy.toLowerCase().includes(q)
@@ -83,7 +86,7 @@ export default function ReportsPage() {
       key: "id",
       label: "Report ID",
       render: (row) => (
-        <span className="font-mono text-xs font-semibold">{row.id}</span>
+        <span className="font-mono text-xs font-semibold">{getReportReference(row)}</span>
       ),
     },
     {
@@ -147,7 +150,7 @@ export default function ReportsPage() {
           onChange={(e) => setTypeFilter(e.target.value)}
           options={[
             { value: "", label: "All Types" },
-            ...["Flood", "Cyclone", "Earthquake", "Fire", "Other"].map((t) => ({
+            ...disasterTypes.map((t) => ({
               value: t,
               label: t,
             })),
