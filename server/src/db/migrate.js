@@ -18,7 +18,12 @@ async function loadMigrationFiles(migrationsDirectory) {
       return {
         name,
         sql,
-        checksum: createHash("sha256").update(sql).digest("hex"),
+        // Git stores these SQL files with LF, but Windows checkouts can use
+        // CRLF. Hash a canonical form so the same migration remains valid
+        // across local development and Linux deployment environments.
+        checksum: createHash("sha256")
+          .update(sql.replace(/\r\n?/g, "\n"))
+          .digest("hex"),
       };
     }),
   );
