@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Badge, Button, Card, Textarea, Progress } from "../ui";
 import { useAuth } from "../../context/AuthContext";
+import { canActOnTask } from "../../lib/permissions";
 
 const priorityColors = { Critical: "red", High: "orange", Medium: "teal", Low: "grey" };
 const progressByStatus = { "To Do": 0, "In Progress": 50, "En Route": 75, Completed: 100 };
@@ -9,9 +10,7 @@ export default function MyTasksList({ tasks, onUpdateTask }) {
   const { currentUser } = useAuth();
   const [updatingId, setUpdatingId] = useState("");
   const [updateText, setUpdateText] = useState("");
-  const myTasks = tasks.filter((task) =>
-    task.assignedUserId ? task.assignedUserId === currentUser.id : task.assignedTo === currentUser.name
-  );
+  const myTasks = tasks.filter((task) => canActOnTask(task, currentUser));
 
   function saveUpdate(task) {
     if (updateText.trim()) onUpdateTask(task.id, { updates: [...(task.updates || []), updateText.trim()] });

@@ -1,3 +1,5 @@
+import { mapWarehouse } from "../warehouses/service.js";
+
 function json(value, fallback) {
   if (value === null || value === undefined) return fallback;
   return typeof value === "string" ? JSON.parse(value) : value;
@@ -97,11 +99,7 @@ export class AuthoritativeRepository {
           leader: row.leader_name || "Unassigned", memberCount: row.member_count,
           status: row.status, location: row.location, activeTask: row.active_task,
         })),
-        warehouses: warehouses.rows.map((row) => ({
-          id: row.id, name: row.name,
-          lat: row.latitude == null ? null : Number(row.latitude),
-          lng: row.longitude == null ? null : Number(row.longitude),
-        })),
+        warehouses: warehouses.rows.map(mapWarehouse),
         notifications: notifications.rows.map((row) => ({
           id: row.id, userId: row.user_id, type: row.type, title: row.title,
           body: row.body, read: row.is_read, timestamp: row.created_at,

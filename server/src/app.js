@@ -6,6 +6,8 @@ import { AuthService, JwtService } from "./auth/service.js";
 import { UserAuthRepository } from "./db/repository.js";
 import { createTeamRouter, createUserRouter } from "./users/routes.js";
 import { UserManagementService } from "./users/service.js";
+import { createWarehouseRouter } from "./warehouses/routes.js";
+import { WarehouseManagementService } from "./warehouses/service.js";
 import { createSyncRouter } from "./sync/routes.js";
 import { SyncError, SyncService } from "./sync/service.js";
 
@@ -30,11 +32,13 @@ export function createApp({ db, config, version = "0.1.0", logger = console }) {
   });
   const requireAuth = createRequireAuth({ jwtService, userRepository });
   const requireAdmin = allowRoles("central_admin");
+  const requireWarehouseManage = allowRoles("central_admin", "warehouse_manager");
   const userManagementService = new UserManagementService({
     db,
     bcryptRounds: config.bcryptRounds,
     passwordMinLength: config.passwordMinLength,
   });
+  const warehouseManagementService = new WarehouseManagementService({ db });
   const syncService = new SyncService(db);
 
   app.disable("x-powered-by");
@@ -107,6 +111,14 @@ export function createApp({ db, config, version = "0.1.0", logger = console }) {
       service: userManagementService,
       requireAuth,
       requireAdmin,
+    }),
+  );
+  app.use(
+    "/api/warehouses",
+    createWarehouseRouter({
+      service: warehouseManagementService,
+      requireAuth,
+      requireWarehouseManage,
     }),
   );
   app.use(

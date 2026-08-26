@@ -12,6 +12,7 @@ import { AuthApiError } from "../lib/authApi";
 import { createReportReference } from "../lib/reportReference";
 import { syncFacade } from "../lib/syncFacade";
 import { assertTransition } from "../lib/workflowState";
+import { canActOnReport, canActOnTask } from "../lib/permissions";
 import { useAuth } from "./AuthContext";
 import { useOffline } from "./OfflineContext";
 
@@ -262,7 +263,7 @@ export function DataProvider({ children }) {
   useEffect(() => {
     if (!ready || !accessToken || isOffline || navigator.onLine === false) return undefined;
     void syncNow();
-    const interval = window.setInterval(() => void syncNow(), 30000);
+    const interval = window.setInterval(() => void syncNow(), 7000);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, accessToken, isOffline]);
@@ -274,13 +275,19 @@ export function DataProvider({ children }) {
   }, [state.syncQueue.length, ready, accessToken, isOffline]);
 
   async function mutate(type, payload) {
-    if (type === "UPDATE_REPORT" && payload.patch?.status) {
+    if (type === "UPDATE_REPORT") {
       const report = stateRef.current.reports.find((item) => item.id === payload.id);
-      if (report) assertTransition("report", report.status, payload.patch.status);
+      if (report && !canActOnReport(report, currentUser)) {
+        throw new Error("You are not assigned to this report.");
+      }
+      if (report && payload.patch?.status) assertTransition("report", report.status, payload.patch.status);
     }
-    if (type === "UPDATE_TASK" && payload.patch?.status) {
+    if (type === "UPDATE_TASK") {
       const task = stateRef.current.tasks.find((item) => item.id === payload.id);
-      if (task) assertTransition("task", task.status, payload.patch.status);
+      if (task && !canActOnTask(task, currentUser)) {
+        throw new Error("You are not assigned to this task.");
+      }
+      if (task && payload.patch?.status) assertTransition("task", task.status, payload.patch.status);
     }
     const entry = {
       id: crypto.randomUUID(),
@@ -373,6 +380,7 @@ export function DataProvider({ children }) {
     addStockLog: (entry) => mutate("ADD_STOCK_LOG", { ...entry, id: entry.id || crypto.randomUUID() }),
     replaceTeams: (teams) => updateDomain("teams", () => teams),
     replaceUsers: (users) => updateDomain("users", () => users),
+    replaceWarehouses: (warehouses) => updateDomain("warehouses", () => warehouses),
     updateItemQty: (id, delta, reason) => mutate("UPDATE_ITEM_QTY", {
       itemId: id, delta, reason, logId: crypto.randomUUID(), timestamp: new Date().toISOString(),
     }),

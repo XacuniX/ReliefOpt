@@ -40,7 +40,6 @@ function KanbanBoard({ taskList, users, teams, onMoveTask }) {
                 const nextStatus = statuses[statuses.indexOf(task.status) + 1];
                 return (
                   <Card key={task.id} className="p-4">
-                    <p className="text-xs text-muted-foreground m-0">{task.id}</p>
                     <h3 className="text-base font-semibold leading-tight my-1.5">{task.title}</h3>
                     <p className="text-sm text-muted-foreground mb-3">{assignmentFor(users, teams, task)}</p>
                     {task.pendingApproval && <Badge color="amber" text="Pending approval" />}

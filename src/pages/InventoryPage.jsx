@@ -4,9 +4,11 @@ import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import InventoryTable from "../components/inventory/InventoryTable";
 import ItemFormModal from "../components/inventory/ItemFormModal";
+import WarehouseDrawer from "../components/inventory/WarehouseDrawer";
 import StockLog from "../components/inventory/StockLog";
 import LowStockAlert from "../components/inventory/LowStockAlert";
 import { Tabs, TabsContent } from "../components/ui/Tabs";
+import { createWarehouse } from "../lib/warehouseApi";
 
 export default function InventoryPage() {
   const {
@@ -15,8 +17,9 @@ export default function InventoryPage() {
     warehouses: warehouseRecords,
     addItem,
     updateItem,
+    replaceWarehouses,
   } = useData();
-  const { currentUser } = useAuth();
+  const { currentUser, accessToken } = useAuth();
   const warehouseNames = useMemo(
     () => warehouseRecords.map((warehouse) => warehouse.name),
     [warehouseRecords],
@@ -24,6 +27,7 @@ export default function InventoryPage() {
   const [activeWarehouse, setActiveWarehouse] = useState("");
   const [editingItem, setEditingItem] = useState(undefined);
   const [modalOpen, setModalOpen] = useState(false);
+  const [warehouseDrawerOpen, setWarehouseDrawerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [highlightItemId, setHighlightItemId] = useState("");
 
@@ -108,6 +112,39 @@ export default function InventoryPage() {
     setModalOpen(false);
   }
 
+  async function saveWarehouse(form) {
+    const { categories, ...warehouseFields } = form;
+    const response = await createWarehouse(accessToken, warehouseFields);
+    const created = response.warehouse;
+    replaceWarehouses([...warehouseRecords, created]);
+
+    const userName = currentUser?.name || "Unknown";
+    for (const category of categories) {
+      await addItem({
+        id: crypto.randomUUID(),
+        name: category,
+        category,
+        qty: 0,
+        unit: "units",
+        warehouseId: created.id,
+        warehouse: created.name,
+        status: "Critical",
+        lastUpdated: new Date().toISOString(),
+        stockLog: {
+          id: crypto.randomUUID(),
+          itemName: category,
+          change: 0,
+          reason: "Restocking",
+          user: userName,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    setActiveWarehouse(created.name);
+    setToastMessage(`${created.name} was added.`);
+  }
+
   if (!ready) {
     return (
       <div className="max-w-6xl mx-auto">
@@ -146,9 +183,14 @@ export default function InventoryPage() {
       <section>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xl font-bold">Warehouse inventory</h2>
-          <Button size="sm" onClick={openAddModal}>
-            Add Item
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setWarehouseDrawerOpen(true)}>
+              Add Warehouse
+            </Button>
+            <Button size="sm" onClick={openAddModal}>
+              Add Item
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeWarehouse} onValueChange={setActiveWarehouse}>
@@ -174,6 +216,11 @@ export default function InventoryPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSave={saveItem}
+      />
+      <WarehouseDrawer
+        isOpen={warehouseDrawerOpen}
+        onClose={() => setWarehouseDrawerOpen(false)}
+        onSave={saveWarehouse}
       />
       {toastMessage && (
         <Toast

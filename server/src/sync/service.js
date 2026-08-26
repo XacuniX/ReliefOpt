@@ -286,6 +286,22 @@ async function requireAssignedTeam(db, teamId) {
   }
 }
 
+/**
+ * Central admins and warehouse managers may act on any record; field workers only on their own or
+ * their team's. Only `field_worker` actors are restricted — every production caller of applyMutation
+ * (direct(), gated to central_admin by its route; decide(), which resolves the original submitter's
+ * role from the database) always supplies a role, so a missing role only occurs in internal/test
+ * callers and is treated as unrestricted rather than maximally restricted.
+ */
+function assertAssignedAccess(actor, { assignedTeamId = null, assignedUserId = null }) {
+  if (actor.role !== "field_worker") return;
+  const teamMatch = Boolean(assignedTeamId) && assignedTeamId === actor.teamId;
+  const userMatch = Boolean(assignedUserId) && assignedUserId === actor.id;
+  if (!teamMatch && !userMatch) {
+    throw new SyncError(403, "FORBIDDEN", "You are not assigned to this record.");
+  }
+}
+
 async function insertStockLog(db, entry, itemId, actor) {
   if (!entry) return;
   await db.query(
@@ -415,6 +431,15 @@ export async function applyMutation(db, type, payload, actor) {
     }
     case "UPDATE_REPORT": {
       const patch = { ...payload.patch };
+      const existingReport = await db.query(
+        "SELECT status, assigned_team_id, submitted_by_id FROM reports WHERE id = $1",
+        [payload.id],
+      );
+      await requireChanged(existingReport);
+      assertAssignedAccess(actor, {
+        assignedTeamId: existingReport.rows[0].assigned_team_id,
+        assignedUserId: existingReport.rows[0].submitted_by_id,
+      });
       if (Object.hasOwn(patch, "assignedTeamId")) patch.assignedTeamId ||= null;
       if (Object.hasOwn(patch, "assignedTeamId")) {
         await requireAssignedTeam(db, patch.assignedTeamId);
@@ -438,16 +463,11 @@ export async function applyMutation(db, type, payload, actor) {
           { min: 0, integer: true },
         );
       if (Object.hasOwn(patch, "status")) {
-        const current = await db.query(
-          "SELECT status FROM reports WHERE id = $1",
-          [payload.id],
-        );
-        await requireChanged(current);
-        if (!canTransition("report", current.rows[0].status, patch.status)) {
+        if (!canTransition("report", existingReport.rows[0].status, patch.status)) {
           throw new SyncError(
             400,
             "INVALID_STATE_TRANSITION",
-            `Cannot move report from '${current.rows[0].status}' to '${patch.status}'.`,
+            `Cannot move report from '${existingReport.rows[0].status}' to '${patch.status}'.`,
           );
         }
       }
@@ -503,6 +523,15 @@ export async function applyMutation(db, type, payload, actor) {
       return;
     case "UPDATE_TASK": {
       const patch = { ...payload.patch };
+      const existingTask = await db.query(
+        "SELECT assigned_team_id, assigned_user_id FROM tasks WHERE id = $1",
+        [payload.id],
+      );
+      await requireChanged(existingTask);
+      assertAssignedAccess(actor, {
+        assignedTeamId: existingTask.rows[0].assigned_team_id,
+        assignedUserId: existingTask.rows[0].assigned_user_id,
+      });
       if (patch.resources) patch.resources = JSON.stringify(patch.resources);
       if (patch.updates) patch.updates = JSON.stringify(patch.updates);
       if (Object.hasOwn(patch, "priority"))
@@ -777,9 +806,15 @@ export class SyncService {
         return { proposal: mapProposal(rejected), duplicate: false };
       }
 
+      const submitter = await client.query(
+        "SELECT role, team_id FROM users WHERE id = $1",
+        [proposal.user_id],
+      );
       await applyMutation(client, proposal.proposal_type, proposal.payload, {
         id: proposal.user_id,
         name: "Proposal submitter",
+        role: submitter.rows[0]?.role,
+        teamId: submitter.rows[0]?.team_id ?? null,
       });
       const sequence = await authoritative.advanceSnapshot();
       const accepted = await proposals.decide(id, {

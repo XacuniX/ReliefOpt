@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-const WAREHOUSE_UPDATE_COLUMNS = new Set(["name", "latitude", "longitude"]);
+const WAREHOUSE_UPDATE_COLUMNS = new Set([
+  "name", "latitude", "longitude", "address", "capacity", "manager_name", "manager_phone",
+]);
 
 export class UserAuthRepository {
   constructor(db) {
@@ -44,19 +46,36 @@ export class WarehouseRepository {
     this.db = db;
   }
 
-  async create({ id = randomUUID(), name, latitude = null, longitude = null }) {
+  async create({
+    id = randomUUID(),
+    name,
+    latitude = null,
+    longitude = null,
+    address = null,
+    capacity = null,
+    managerName = null,
+    managerPhone = null,
+  }) {
     if (!name?.trim()) throw new Error("Warehouse name is required.");
     const result = await this.db.query(
-      `INSERT INTO warehouses (id, name, latitude, longitude)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO warehouses (id, name, latitude, longitude, address, capacity, manager_name, manager_phone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [id, name.trim(), latitude, longitude],
+      [id, name.trim(), latitude, longitude, address, capacity, managerName, managerPhone],
     );
     return result.rows[0];
   }
 
   async findById(id) {
     const result = await this.db.query("SELECT * FROM warehouses WHERE id = $1", [id]);
+    return result.rows[0] ?? null;
+  }
+
+  async findByName(name) {
+    const result = await this.db.query(
+      "SELECT * FROM warehouses WHERE LOWER(name) = LOWER($1)",
+      [name],
+    );
     return result.rows[0] ?? null;
   }
 
