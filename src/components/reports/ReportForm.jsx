@@ -203,7 +203,7 @@ export default function ReportForm({ onSubmit }) {
           ))}
         </div>
         <p className="text-sm text-muted-foreground text-center">
-          Step {step} of 3 Ã¢â‚¬â€{" "}
+          Step {step} of 3 -{" "}
           {step === 1
             ? "Location"
             : step === 2
@@ -374,11 +374,11 @@ export default function ReportForm({ onSubmit }) {
             {[
               ["District", form.district],
               ["GPS Coordinates", form.coordinates],
-              ["Landmark", form.landmark || "Ã¢â‚¬â€"],
+              ["Landmark", form.landmark || "Not provided"],
               ["Incident Type", form.type],
               ["Severity", `${form.severity}/5`],
-              ["Description", form.description || "Ã¢â‚¬â€"],
-              ["Affected People", form.affectedCount || "Ã¢â‚¬â€"],
+              ["Description", form.description || "Not provided"],
+              ["Affected People", form.affectedCount || "Not provided"],
               ["Children Present", form.childrenPresent ? "Yes" : "No"],
               ["Elderly Present", form.elderlyPresent ? "Yes" : "No"],
             ].map(([label, value]) => (
