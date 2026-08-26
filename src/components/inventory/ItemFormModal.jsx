@@ -31,7 +31,10 @@ export default function ItemFormModal({
   const setField = (field, value) =>
     setForm((current) => ({ ...current, [field]: value }));
   const changeQuantity = (amount) =>
-    setField("qty", Math.max(0, Number(form.qty || 0) + amount));
+    setForm((current) => ({
+      ...current,
+      qty: Math.max(0, Number(current.qty || 0) + amount),
+    }));
 
   function handleSave() {
     if (!form.name.trim()) return;
@@ -67,20 +70,29 @@ export default function ItemFormModal({
             variant="outline"
             onClick={() => changeQuantity(-1)}
             aria-label="Decrease quantity"
+            className="w-9 shrink-0 px-0"
           >
-            Ã¢Ë†â€™
+            -
           </Button>
           <Input
             type="number"
+            min="0"
+            step="1"
+            inputMode="numeric"
             value={String(form.qty)}
-            onChange={(event) => setField("qty", event.target.value)}
-            className="flex-1"
+            onChange={(event) => {
+              const value = event.target.value;
+              setField("qty", value === "" ? "" : Math.max(0, Math.floor(Number(value))));
+            }}
+            aria-label="Quantity"
+            className="m-0 min-w-0 flex-1"
           />
           <Button
             size="sm"
             variant="outline"
             onClick={() => changeQuantity(1)}
             aria-label="Increase quantity"
+            className="w-9 shrink-0 px-0"
           >
             +
           </Button>
