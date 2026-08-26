@@ -2,9 +2,13 @@ import { useEffect, useState } from "react";
 import { Button, Input, Select, Textarea, Toast, Badge } from "../ui";
 import { calculateUrgency } from "../../lib/urgency";
 import { useAuth } from "../../context/AuthContext";
+import { useData } from "../../context/DataContext";
 import { getAll, put, remove } from "../../lib/db";
 import { districtNames } from "../../lib/districts";
 import { disasterTypes } from "../../lib/disasters";
+import { cityCoords } from "../../mockData";
+
+const DEFAULT_COORDS = [23.8103, 90.4125];
 
 function toNullableNumber(value) {
   return value === "" ? null : Number(value);
@@ -33,6 +37,7 @@ function numericValidationError(form) {
 
 export default function ReportForm({ onSubmit }) {
   const { currentUser } = useAuth();
+  const { addMapPin } = useData();
   const [step, setStep] = useState(1);
   const [toast, setToast] = useState(null);
   const [validationError, setValidationError] = useState("");
@@ -123,12 +128,13 @@ export default function ReportForm({ onSubmit }) {
       distanceFromAidKm,
     });
 
+    const coords = cityCoords[form.district] || null;
+
     const report = {
       id: crypto.randomUUID(),
       type: form.type,
       district: form.district,
-      location: null,
-      locationName: form.landmark.trim(),
+      location: coords ? { lat: coords[0], lng: coords[1] } : null,
       severity: form.severity,
       status: "Pending",
       submittedById: currentUser?.id,
@@ -149,6 +155,21 @@ export default function ReportForm({ onSubmit }) {
     setSubmitting(true);
     try {
       const result = await onSubmit?.(report);
+      const [pinLat, pinLng] = coords ?? DEFAULT_COORDS;
+      addMapPin({
+        id: crypto.randomUUID(),
+        reportId: report.id,
+        source: "Manual",
+        position: [pinLat, pinLng],
+        lat: pinLat,
+        lng: pinLng,
+        location: form.district || "Unknown",
+        locationName: form.landmark.trim(),
+        waterLevelFt,
+        waterLevel: waterLevelFt != null ? `${waterLevelFt}ft` : "—",
+        peopleCount,
+        childrenPresent: form.childrenPresent,
+      });
       setToast({
         type: result?.status === "Accepted" ? "success" : "info",
         message:
@@ -236,7 +257,7 @@ export default function ReportForm({ onSubmit }) {
             required
           />
           <p className="-mt-2 text-xs text-muted-foreground">
-            Coordinates are resolved from OpenStreetMap after submission. Include a road, village, or landmark for the most accurate pin.
+            Your pin is placed at the district center on the map. Add a specific landmark so field teams can find the exact site.
           </p>
           <div className="flex justify-end gap-2 pt-4">
             <Button onClick={() => setStep(2)} disabled={!form.district || !form.landmark.trim()}>

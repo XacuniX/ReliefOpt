@@ -15,7 +15,9 @@ const pool = createPool(config);
 try {
   await runMigrations({ db: pool });
   const result = await seedDemoData({ db: pool, password, bcryptRounds: config.bcryptRounds });
-  console.info(`Seeded ${result.users} demo users and ${result.teams} teams.`);
+  console.info(
+    `Seeded ${result.users} demo users, ${result.teams} teams, ${result.warehouses} warehouses, and ${result.inventory} inventory items.`,
+  );
 } finally {
   await pool.end();
 }

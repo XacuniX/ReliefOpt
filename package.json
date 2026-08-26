@@ -21,6 +21,7 @@
     "server:start": "npm --prefix server run start",
     "server:migrate": "npm --prefix server run migrate",
     "server:seed:demo": "npm --prefix server run seed:demo",
+    "server:seed:warehouses": "npm --prefix server run seed:warehouses",
     "server:test": "npm --prefix server run test",
     "android:download-model": "node scripts/download-android-whisper-model.mjs",
     "android:sync-assets": "node scripts/sync-android-assets.mjs",

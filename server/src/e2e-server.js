@@ -23,18 +23,12 @@ const pool = new adapter.Pool();
 await runMigrations({ db: pool });
 await seedDemoData({ db: pool, password: PASSWORD, bcryptRounds: 10 });
 
-await pool.query(`INSERT INTO warehouses (id, name, latitude, longitude) VALUES
-  ('w1', 'Dhaka Central Warehouse', 23.8103, 90.4125),
-  ('w2', 'Sylhet Relief Depot', 24.8949, 91.8687)`);
 await pool.query(`INSERT INTO reports
   (id, type, district, latitude, longitude, severity, status, submitted_by_id, description, affected_count, people_count, urgency_score, urgency_zone)
   VALUES ('r1', 'Flood', 'Sylhet', 24.8949, 91.8687, 5, 'Pending', 'u3', 'River flooding near the market', 250, 250, 82, 'red')`);
 await pool.query(`INSERT INTO tasks
   (id, title, description, priority, assigned_team_id, assigned_user_id, status, linked_report_id)
   VALUES ('task-1', 'Distribute water', 'Deliver clean water', 'Critical', 't1', 'u3', 'To Do', 'r1')`);
-await pool.query(`INSERT INTO inventory
-  (id, name, category, quantity, unit, status, warehouse_id)
-  VALUES ('inv-1', 'Rice', 'Food', 500, 'kg', 'OK', 'w1'), ('inv-2', 'Water', 'Food', 10, 'cases', 'Low', 'w2')`);
 await pool.query(`INSERT INTO notifications (id, user_id, type, title, body, is_read) VALUES
   ('notice-1', NULL, 'Critical', 'Flood escalation', 'Water level is rising in Sylhet.', FALSE),
   ('notice-2', NULL, 'System', 'Snapshot ready', 'Central Command snapshot is available.', FALSE)`);

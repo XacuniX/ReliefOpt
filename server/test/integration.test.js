@@ -58,7 +58,7 @@ test("demo seeding stores bcrypt hashes and is idempotent", async () => {
     db: pool,
     password,
     bcryptRounds: TEST_CONFIG.bcryptRounds,
-  }), { teams: 7, users: 10 });
+  }), { teams: 7, users: 10, warehouses: 5, inventory: 25 });
   await seedDemoData({ db: pool, password, bcryptRounds: TEST_CONFIG.bcryptRounds });
 
   const result = await pool.query("SELECT password_hash FROM users WHERE username = 'rahim'");
@@ -82,7 +82,7 @@ test("warehouse repository supports CRUD", async () => {
 
   const updated = await warehouses.update(created.id, { name: "Updated Warehouse" });
   assert.equal(updated.name, "Updated Warehouse");
-  assert.equal((await warehouses.list()).length, 1);
+  assert.equal((await warehouses.list()).length, 6);
 
   assert.deepEqual(await warehouses.delete(created.id), { id: created.id });
   assert.equal(await warehouses.findById(created.id), null);

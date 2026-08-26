@@ -11,6 +11,7 @@
     "start": "node src/index.js",
     "migrate": "node src/migrate.js",
     "seed:demo": "node src/seed-demo.js",
+    "seed:warehouses": "node src/seed-warehouses.js",
     "test": "node --test",
     "test:coverage": "node --experimental-test-coverage --test",
     "test:postgres": "node --test test/postgres.test.js",

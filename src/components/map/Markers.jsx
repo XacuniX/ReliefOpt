@@ -137,7 +137,7 @@ export default function Markers({ filters, mapPins, teams, reports, warehouses }
         >
           <Popup>
             <div className="text-sm">
-              <strong>Voice Report</strong>
+              <strong>{pin.source ? `${pin.source} Report` : "Field Report"}</strong>
               <br />
               Location: {pin.location}
               <br />

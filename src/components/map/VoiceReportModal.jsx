@@ -298,6 +298,8 @@ export default function VoiceReportModal() {
 
     const pin = {
       id: crypto.randomUUID(),
+      reportId: report.id,
+      source: "Voice",
       position: coords ?? [23.8103, 90.4125],
       location: fields.location ?? "Unknown",
       locationName: fields.location ?? "Unknown",
