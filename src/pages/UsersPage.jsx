@@ -5,7 +5,9 @@ import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import { AuthApiError } from "../lib/authApi";
 import {
+  createTeam,
   createUser,
+  deleteTeam,
   deactivateUser,
   fetchTeams,
   fetchUsers,
@@ -14,6 +16,7 @@ import {
 import UserFormModal from "../components/users/UserFormModal";
 import UserTable from "../components/users/UserTable";
 import TeamPanel from "../components/users/TeamPanel";
+import TeamFormModal from "../components/users/TeamFormModal";
 
 function normalizeUser(user) {
   return { ...user, team: user.teamName || "" };
@@ -21,7 +24,7 @@ function normalizeUser(user) {
 
 function UsersContent() {
   const { accessToken, currentUser, logout, refreshCurrentUser } = useAuth();
-  const { ready: dataReady, replaceUsers } = useData();
+  const { ready: dataReady, replaceTeams, replaceUsers } = useData();
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +32,7 @@ function UsersContent() {
   const [role, setRole] = useState("");
   const [editingUser, setEditingUser] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -71,6 +75,12 @@ function UsersContent() {
     replaceUsers(nextUsers);
   }
 
+  function cacheTeams(nextTeams) {
+    const sortedTeams = [...nextTeams].sort((left, right) => left.name.localeCompare(right.name));
+    setTeams(sortedTeams);
+    replaceTeams(sortedTeams);
+  }
+
   async function saveUser(formUser) {
     const { id, ...payload } = formUser;
     const response = id
@@ -91,6 +101,28 @@ function UsersContent() {
       type: "success",
       message: id ? `${savedUser.name} was updated.` : `${savedUser.name} can now sign in.`,
     });
+  }
+
+  async function saveTeam(formTeam) {
+    const response = await createTeam(accessToken, formTeam);
+    cacheTeams([...teams, response.team]);
+    setToast({ type: "success", message: `${response.team.name} was added.` });
+  }
+
+  async function removeTeam(team) {
+    if (!window.confirm(`Delete ${team.name}? All assigned members will become unassigned.`)) return;
+    try {
+      await deleteTeam(accessToken, team.id);
+      cacheTeams(teams.filter((entry) => entry.id !== team.id));
+      cacheUsers(users.map((user) => user.teamId === team.id
+        ? { ...user, teamId: null, teamName: null, team: "" }
+        : user));
+      if (currentUser.teamId === team.id) await refreshCurrentUser();
+      setToast({ type: "success", message: `${team.name} was deleted and its members were unassigned.` });
+    } catch (error) {
+      if (error instanceof AuthApiError && error.code === "INVALID_SESSION") logout();
+      else setToast({ type: "error", message: error.message || "Unable to delete the team." });
+    }
   }
 
   async function deactivate(user) {
@@ -149,7 +181,17 @@ function UsersContent() {
         onEdit={(user) => { setEditingUser(user); setModalOpen(true); }}
         onDeactivate={deactivate}
       />
-      <TeamPanel teamList={teams} userList={users} />
+      <TeamPanel
+        teamList={teams}
+        userList={users}
+        onAddTeam={() => setTeamModalOpen(true)}
+        onDeleteTeam={removeTeam}
+      />
+      <TeamFormModal
+        isOpen={teamModalOpen}
+        onClose={() => setTeamModalOpen(false)}
+        onSave={saveTeam}
+      />
       <UserFormModal
         isOpen={modalOpen}
         user={editingUser}

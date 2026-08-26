@@ -87,6 +87,28 @@ test("only Central Admin can access user and team administration", async () => {
   );
 });
 
+test("an admin can create a team for later user assignment", async () => {
+  const response = await request("/api/teams", {
+    token: adminToken,
+    method: "POST",
+    body: JSON.stringify({ name: "Chattogram Response", status: "Standby", location: "Chattogram" }),
+  });
+  assert.equal(response.status, 201);
+  const { team } = await response.json();
+  assert.equal(team.name, "Chattogram Response");
+  assert.equal(team.status, "Standby");
+  assert.equal(team.location, "Chattogram");
+  assert.equal(team.leader, "Unassigned");
+
+  const duplicate = await request("/api/teams", {
+    token: adminToken,
+    method: "POST",
+    body: JSON.stringify({ name: "chattogram response" }),
+  });
+  assert.equal(duplicate.status, 409);
+  assert.equal((await duplicate.json()).code, "TEAM_NAME_TAKEN");
+});
+
 test("an admin can create a user who can immediately authenticate", async () => {
   const response = await request("/api/users", {
     token: adminToken,
@@ -196,15 +218,82 @@ test("user edits are immediately authoritative and preserve ID-based relationshi
   });
   assert.equal((await request("/api/warehouse/ping", { token: existingSession.accessToken })).status, 200);
 
-  const teamLink = await pool.query("SELECT leader_id FROM teams WHERE id = 'team-alpha'");
   const reportLink = await pool.query("SELECT submitted_by_id FROM reports WHERE id = 'report-user-link'");
   const taskLink = await pool.query("SELECT assigned_user_id FROM tasks WHERE id = 'task-user-link'");
-  assert.equal(teamLink.rows[0].leader_id, userId);
   assert.equal(reportLink.rows[0].submitted_by_id, userId);
   assert.equal(taskLink.rows[0].assigned_user_id, userId);
 
-  const teams = await (await request("/api/teams", { token: adminToken })).json();
-  assert.equal(teams.teams.find((team) => team.id === "team-alpha").leader, "Renamed Manager");
+});
+
+test("a departing leader is reassigned, then cleared when no eligible members remain", async () => {
+  const passwordHash = await bcrypt.hash(USER_PASSWORD, TEST_CONFIG.bcryptRounds);
+  await pool.query(
+    `INSERT INTO teams (id, name, status, location)
+     VALUES ('team-leader-test', 'Leader Transfer Team', 'Standby', 'Dhaka')`,
+  );
+  await pool.query(
+    `INSERT INTO users (id, username, password_hash, name, role, status, team_id)
+     VALUES ('team-leader-test-user', 'team.leader', $1, 'Team Leader', 'field_worker', 'Active', 'team-leader-test'),
+            ('team-backup-test-user', 'team.backup', $1, 'Backup Member', 'field_worker', 'Active', 'team-leader-test')`,
+    [passwordHash],
+  );
+  await pool.query(
+    "UPDATE teams SET leader_id = 'team-leader-test-user' WHERE id = 'team-leader-test'",
+  );
+
+  const leaderLeaves = await request("/api/users/team-leader-test-user", {
+    token: adminToken,
+    method: "PATCH",
+    body: JSON.stringify({ teamId: null }),
+  });
+  assert.equal(leaderLeaves.status, 200);
+
+  let teams = await (await request("/api/teams", { token: adminToken })).json();
+  let team = teams.teams.find((entry) => entry.id === "team-leader-test");
+  assert.equal(team.leaderId, "team-backup-test-user");
+  assert.equal(team.leader, "Backup Member");
+
+  const backupLeaves = await request("/api/users/team-backup-test-user", {
+    token: adminToken,
+    method: "PATCH",
+    body: JSON.stringify({ teamId: null }),
+  });
+  assert.equal(backupLeaves.status, 200);
+
+  teams = await (await request("/api/teams", { token: adminToken })).json();
+  team = teams.teams.find((entry) => entry.id === "team-leader-test");
+  assert.equal(team.leaderId, null);
+  assert.equal(team.leader, "Unassigned");
+});
+
+test("deleting a team unassigns all of its members", async () => {
+  const passwordHash = await bcrypt.hash(USER_PASSWORD, TEST_CONFIG.bcryptRounds);
+  await pool.query(
+    `INSERT INTO teams (id, name, status, location)
+     VALUES ('team-delete-test', 'Delete Test Team', 'Standby', 'Dhaka')`,
+  );
+  await pool.query(
+    `INSERT INTO users (id, username, password_hash, name, role, status, team_id)
+     VALUES ('team-delete-member-a', 'delete.member.a', $1, 'Delete Member A', 'field_worker', 'Active', 'team-delete-test'),
+            ('team-delete-member-b', 'delete.member.b', $1, 'Delete Member B', 'field_worker', 'Active', 'team-delete-test')`,
+    [passwordHash],
+  );
+
+  const response = await request("/api/teams/team-delete-test", {
+    token: adminToken,
+    method: "DELETE",
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    deleted: true,
+    unassignedUserIds: ["team-delete-member-a", "team-delete-member-b"],
+  });
+
+  const members = await pool.query(
+    "SELECT team_id FROM users WHERE id IN ('team-delete-member-a', 'team-delete-member-b') ORDER BY id",
+  );
+  assert.deepEqual(members.rows.map((row) => row.team_id), [null, null]);
+  assert.equal((await pool.query("SELECT id FROM teams WHERE id = 'team-delete-test'")).rowCount, 0);
 });
 
 test("password reset revokes existing tokens and changes login credentials", async () => {

@@ -15,6 +15,20 @@ const USER_COLUMNS = `
   u.auth_version
 `;
 
+function mapTeam(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    leaderId: row.leader_id ?? null,
+    leader: row.leader_name ?? "Unassigned",
+    memberCount: row.member_count,
+    status: row.status,
+    location: row.location,
+    activeTask: row.active_task,
+  };
+}
+
 export function mapUser(row) {
   if (!row) return null;
   return {
@@ -79,16 +93,60 @@ export class UserManagementRepository {
        LEFT JOIN users leader ON leader.id = t.leader_id
        ORDER BY t.name, t.id`,
     );
-    return result.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      leaderId: row.leader_id ?? null,
-      leader: row.leader_name ?? "Unassigned",
-      memberCount: row.member_count,
-      status: row.status,
-      location: row.location,
-      activeTask: row.active_task,
-    }));
+    return result.rows.map(mapTeam);
+  }
+
+  async findTeamById(id) {
+    const result = await this.db.query(
+      `SELECT
+         t.id,
+         t.name,
+         t.leader_id,
+         leader.name AS leader_name,
+         t.member_count,
+         t.status,
+         t.location,
+         t.active_task
+       FROM teams t
+       LEFT JOIN users leader ON leader.id = t.leader_id
+       WHERE t.id = $1`,
+      [id],
+    );
+    return mapTeam(result.rows[0]);
+  }
+
+  async findTeamByName(name) {
+    const result = await this.db.query(
+      "SELECT id FROM teams WHERE LOWER(name) = LOWER($1)",
+      [name],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async createTeam({ id = randomUUID(), name, status, location }) {
+    const result = await this.db.query(
+      `INSERT INTO teams (id, name, status, location)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [id, name, status, location],
+    );
+    return this.findTeamById(result.rows[0].id);
+  }
+
+  async unassignTeamMembers(teamId) {
+    const result = await this.db.query(
+      `UPDATE users
+       SET team_id = NULL, updated_at = NOW()
+       WHERE team_id = $1
+       RETURNING id`,
+      [teamId],
+    );
+    return result.rows.map((row) => row.id);
+  }
+
+  async deleteTeam(id) {
+    const result = await this.db.query("DELETE FROM teams WHERE id = $1", [id]);
+    return result.rowCount === 1;
   }
 
   async create({ id = randomUUID(), username, passwordHash, name, role, status, teamId, phone }) {
@@ -125,6 +183,29 @@ export class UserManagementRepository {
       [id, ...entries.map(([, value]) => value)],
     );
     return result.rowCount === 1 ? this.findById(id) : null;
+  }
+
+  async reassignLeaderWhenMemberLeaves(teamId, userId) {
+    const teamResult = await this.db.query(
+      "SELECT leader_id FROM teams WHERE id = $1",
+      [teamId],
+    );
+    if (teamResult.rows[0]?.leader_id !== userId) return false;
+
+    const replacementResult = await this.db.query(
+      `SELECT id
+       FROM users
+       WHERE team_id = $1 AND id <> $2 AND status <> 'Inactive'
+       ORDER BY CASE status WHEN 'Active' THEN 0 WHEN 'Offline' THEN 1 ELSE 2 END, name, id
+       LIMIT 1`,
+      [teamId, userId],
+    );
+    const replacementId = replacementResult.rows[0]?.id ?? null;
+    await this.db.query(
+      "UPDATE teams SET leader_id = $2, updated_at = NOW() WHERE id = $1",
+      [teamId, replacementId],
+    );
+    return true;
   }
 
   async resetPassword(id, passwordHash) {

@@ -18,6 +18,19 @@ export function fetchTeams(accessToken) {
   return apiRequest("/api/teams", authorized(accessToken));
 }
 
+export function createTeam(accessToken, team) {
+  return apiRequest("/api/teams", authorized(accessToken, {
+    method: "POST",
+    body: JSON.stringify(team),
+  }));
+}
+
+export function deleteTeam(accessToken, id) {
+  return apiRequest(`/api/teams/${encodeURIComponent(id)}`, authorized(accessToken, {
+    method: "DELETE",
+  }));
+}
+
 export function createUser(accessToken, user) {
   return apiRequest("/api/users", authorized(accessToken, {
     method: "POST",

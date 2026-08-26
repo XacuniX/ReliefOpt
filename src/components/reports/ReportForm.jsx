@@ -31,14 +31,6 @@ function numericValidationError(form) {
   return "";
 }
 
-function parseCoordinates(value) {
-  const [lat, lng] = String(value || "")
-    .split(",")
-    .map((part) => Number(part.trim()));
-  if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
-  return { lat: 23.8103, lng: 90.4125 };
-}
-
 export default function ReportForm({ onSubmit }) {
   const { currentUser } = useAuth();
   const [step, setStep] = useState(1);
@@ -49,7 +41,6 @@ export default function ReportForm({ onSubmit }) {
 
   const [form, setForm] = useState({
     district: "",
-    coordinates: "23.8103, 90.4125",
     landmark: "",
     type: "",
     severity: 3,
@@ -96,6 +87,10 @@ export default function ReportForm({ onSubmit }) {
   }
 
   function handleReview() {
+    if (!form.landmark.trim()) {
+      setValidationError("A location or landmark is required.");
+      return;
+    }
     const error = numericValidationError(form);
     if (error) {
       setValidationError(error);
@@ -105,6 +100,10 @@ export default function ReportForm({ onSubmit }) {
   }
 
   async function handleSubmit() {
+    if (!form.landmark.trim()) {
+      setValidationError("A location or landmark is required.");
+      return;
+    }
     const error = numericValidationError(form);
     if (error) {
       setValidationError(error);
@@ -128,7 +127,8 @@ export default function ReportForm({ onSubmit }) {
       id: crypto.randomUUID(),
       type: form.type,
       district: form.district,
-      location: parseCoordinates(form.coordinates),
+      location: null,
+      locationName: form.landmark.trim(),
       severity: form.severity,
       status: "Pending",
       submittedById: currentUser?.id,
@@ -159,7 +159,6 @@ export default function ReportForm({ onSubmit }) {
       await remove("drafts", "report-form");
       setForm({
         district: "",
-        coordinates: "23.8103, 90.4125",
         landmark: "",
         type: "",
         severity: 3,
@@ -230,19 +229,17 @@ export default function ReportForm({ onSubmit }) {
             ]}
           />
           <Input
-            label="GPS Coordinates"
-            value={form.coordinates}
-            onChange={(e) => updateField("coordinates", e.target.value)}
-            placeholder="lat, lng"
-          />
-          <Input
-            label="Landmark"
+            label="Exact Location / Landmark"
             value={form.landmark}
             onChange={(e) => updateField("landmark", e.target.value)}
-            placeholder="e.g., Near Companiganj Bazar"
+            placeholder="e.g., Companiganj Bazar, Islampur Road"
+            required
           />
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Coordinates are resolved from OpenStreetMap after submission. Include a road, village, or landmark for the most accurate pin.
+          </p>
           <div className="flex justify-end gap-2 pt-4">
-            <Button onClick={() => setStep(2)} disabled={!form.district}>
+            <Button onClick={() => setStep(2)} disabled={!form.district || !form.landmark.trim()}>
               Next
             </Button>
           </div>
@@ -373,8 +370,7 @@ export default function ReportForm({ onSubmit }) {
           <div className="bg-muted rounded-lg p-4 space-y-2">
             {[
               ["District", form.district],
-              ["GPS Coordinates", form.coordinates],
-              ["Landmark", form.landmark || "Not provided"],
+              ["Exact Location", form.landmark],
               ["Incident Type", form.type],
               ["Severity", `${form.severity}/5`],
               ["Description", form.description || "Not provided"],

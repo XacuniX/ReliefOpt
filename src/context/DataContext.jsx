@@ -371,6 +371,7 @@ export function DataProvider({ children }) {
     addItem: (item) => mutate("ADD_INVENTORY", { ...item, id: item.id || crypto.randomUUID() }),
     updateItem: (id, patch) => mutate("UPDATE_INVENTORY", { id, patch }),
     addStockLog: (entry) => mutate("ADD_STOCK_LOG", { ...entry, id: entry.id || crypto.randomUUID() }),
+    replaceTeams: (teams) => updateDomain("teams", () => teams),
     replaceUsers: (users) => updateDomain("users", () => users),
     updateItemQty: (id, delta, reason) => mutate("UPDATE_ITEM_QTY", {
       itemId: id, delta, reason, logId: crypto.randomUUID(), timestamp: new Date().toISOString(),

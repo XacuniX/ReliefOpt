@@ -3,6 +3,7 @@ import { mapUser, UserManagementRepository } from "./repository.js";
 
 const ROLES = new Set(["central_admin", "warehouse_manager", "field_worker"]);
 const STATUSES = new Set(["Active", "Inactive", "Offline"]);
+const TEAM_STATUSES = new Set(["Deployed", "Standby", "Offline"]);
 const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{2,49}$/;
 
 export class UserManagementError extends Error {
@@ -23,6 +24,11 @@ function requiredText(value, name, maxLength) {
     throw new UserManagementError(400, "VALIDATION_ERROR", `${name} is too long.`);
   }
   return normalized;
+}
+
+function optionalText(value, name, maxLength) {
+  if (value === undefined || value === null || value === "") return null;
+  return requiredText(value, name, maxLength);
 }
 
 function normalizeUsername(value) {
@@ -47,6 +53,13 @@ function normalizeRole(value) {
 function normalizeStatus(value) {
   if (!STATUSES.has(value)) {
     throw new UserManagementError(400, "VALIDATION_ERROR", "Invalid status.");
+  }
+  return value;
+}
+
+function normalizeTeamStatus(value) {
+  if (!TEAM_STATUSES.has(value)) {
+    throw new UserManagementError(400, "VALIDATION_ERROR", "Invalid team status.");
   }
   return value;
 }
@@ -99,6 +112,36 @@ export class UserManagementService {
 
   listTeams() {
     return this.repository.listTeams();
+  }
+
+  async createTeam(input) {
+    const team = {
+      name: requiredText(input?.name, "Team name", 100),
+      status: normalizeTeamStatus(input?.status || "Standby"),
+      location: optionalText(input?.location, "Location", 120),
+    };
+
+    return this.withTransaction(async (repository) => {
+      if (await repository.findTeamByName(team.name)) {
+        throw new UserManagementError(409, "TEAM_NAME_TAKEN", "A team with that name already exists.");
+      }
+      const created = await repository.createTeam(team);
+      await advanceSnapshot(repository);
+      return created;
+    });
+  }
+
+  async deleteTeam(id) {
+    const teamId = requiredText(id, "Team", 100);
+    return this.withTransaction(async (repository) => {
+      if (!(await repository.findTeamById(teamId))) {
+        throw new UserManagementError(404, "TEAM_NOT_FOUND", "Team not found.");
+      }
+      const unassignedUserIds = await repository.unassignTeamMembers(teamId);
+      await repository.deleteTeam(teamId);
+      await advanceSnapshot(repository);
+      return { deleted: true, unassignedUserIds };
+    });
   }
 
   async withTransaction(callback) {
@@ -155,7 +198,7 @@ export class UserManagementService {
     }
 
     return this.withTransaction(async (repository) => {
-      const current = await repository.findById(id);
+      const current = mapUser(await repository.findById(id));
       if (!current) throw new UserManagementError(404, "USER_NOT_FOUND", "User not found.");
       if (Object.hasOwn(patch, "teamId") && !(await repository.teamExists(patch.teamId))) {
         throw new UserManagementError(400, "INVALID_TEAM", "The selected team does not exist.");
@@ -174,7 +217,12 @@ export class UserManagementService {
       if (removesActiveAdmin && await repository.countOtherActiveAdmins(id) === 0) {
         throw new UserManagementError(409, "LAST_ADMIN", "At least one active Central Admin is required.");
       }
+      const leavesCurrentTeam = Object.hasOwn(patch, "teamId") && patch.teamId !== current.teamId;
+      const becomesInactive = patch.status === "Inactive" && current.status !== "Inactive";
       if (Object.keys(patch).length > 0) await repository.update(id, patch);
+      if (current.teamId && (leavesCurrentTeam || becomesInactive)) {
+        await repository.reassignLeaderWhenMemberLeaves(current.teamId, id);
+      }
       if (passwordHash) await repository.resetPassword(id, passwordHash);
       const updated = mapUser(await repository.findById(id));
       await advanceSnapshot(repository);

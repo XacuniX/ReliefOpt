@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Badge, Card } from "../ui";
+import { Badge, Button, Card } from "../ui";
 import { useData } from "../../context/DataContext";
 
 const teamColors = { Deployed: "green", Standby: "amber", Offline: "grey" };
 const roleColors = { central_admin: "navy", warehouse_manager: "orange", field_worker: "teal" };
 const dotColors = { Active: "bg-emerald-600", Inactive: "bg-red-600", Offline: "bg-amber-500" };
 
-export default function TeamPanel({ teamList, userList }) {
+export default function TeamPanel({ teamList, userList, onAddTeam, onDeleteTeam }) {
   const data = useData();
   const teams = teamList || data.teams;
   const users = userList || data.users;
@@ -14,7 +14,10 @@ export default function TeamPanel({ teamList, userList }) {
 
   return (
     <section className="mt-8">
-      <h2 className="text-xl font-bold mb-4">Teams</h2>
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <h2 className="text-xl font-bold">Teams</h2>
+        {onAddTeam && <Button size="sm" onClick={onAddTeam}>+ Add Team</Button>}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {teams.map((team) => {
           const expanded = expandedId === team.id;
@@ -52,6 +55,21 @@ export default function TeamPanel({ teamList, userList }) {
                     </div>
                   ))}
                   {!members.length && <p className="text-muted-foreground text-sm">No members listed.</p>}
+                  {onDeleteTeam && (
+                    <div className="mt-4 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDeleteTeam(team);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        Delete Team
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
