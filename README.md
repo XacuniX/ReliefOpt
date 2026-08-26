@@ -31,13 +31,14 @@ The demo server uses an in-memory database and resets whenever it stops.
 
 Terminal 1:
 
-```powershell
-npm --prefix server run e2e
+```$env:E2E_HOST="0.0.0.0"    
+$env:E2E_CLIENT_ORIGINS="https://localhost,http://192.168.110.225:5173"
+npm.cmd --prefix server run e2e
 ```
 
 Terminal 2:
 
-```powershell
+```
 npm run dev -- --host 127.0.0.1
 ```
 

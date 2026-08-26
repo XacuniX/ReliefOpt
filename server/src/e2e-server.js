@@ -6,10 +6,17 @@ import { seedDemoData } from "./db/seed-demo.js";
 const PASSWORD = "ReliefOpt!123";
 const host = process.env.E2E_HOST || "127.0.0.1";
 const port = Number(process.env.E2E_PORT || 4000);
-const clientOrigins = (process.env.E2E_CLIENT_ORIGINS || "http://127.0.0.1:5173")
+const configuredClientOrigins = (process.env.E2E_CLIENT_ORIGINS || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+// Keep the desktop web client usable when this server is started with an
+// Android/LAN origin list. Android-specific origins remain configurable.
+const clientOrigins = [
+  "http://127.0.0.1:5173",
+  "http://localhost:5173",
+  ...configuredClientOrigins,
+].filter((origin, index, origins) => origins.indexOf(origin) === index);
 const memoryDatabase = newDb({ autoCreateForeignKeyIndices: true });
 const adapter = memoryDatabase.adapters.createPg();
 const pool = new adapter.Pool();
