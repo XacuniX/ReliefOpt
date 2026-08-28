@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./load-env.js";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { runMigrations } from "./db/migrate.js";

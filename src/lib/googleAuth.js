@@ -1,0 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || "";
+
+export const googleSignInAvailable = Boolean(GOOGLE_CLIENT_ID) && !Capacitor.isNativePlatform();

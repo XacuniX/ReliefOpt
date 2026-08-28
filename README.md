@@ -97,8 +97,11 @@ The root `.env` controls the browser client:
 | --- | --- | --- |
 | `VITE_API_URL` | API base URL embedded in the client build | `http://127.0.0.1:4000` |
 | `VITE_AUTH_TIMEOUT_MS` | Authentication request timeout | `8000` |
+| `VITE_GOOGLE_CLIENT_ID` | Google web OAuth client ID used by the GIS button | `<client-id>.apps.googleusercontent.com` |
 
-`server/.env.example` documents all API settings, including database TLS, connection-pool limits, allowed client origins, JWT settings, password rules, and login rate limits. Never commit `server/.env` or the root `.env`.
+Set `GOOGLE_CLIENT_ID` on the API to the same Google web OAuth client ID. For local development, Vite also accepts `GOOGLE_CLIENT_ID` as a fallback when `VITE_GOOGLE_CLIENT_ID` is absent. Add `http://127.0.0.1:5173` and/or `http://localhost:5173` to that OAuth client's authorized JavaScript origins in Google Cloud Console.
+
+`server/.env.example` documents all API settings, including database TLS, connection-pool limits, allowed client origins, JWT and Google settings, password rules, and login rate limits. Never commit `server/.env` or the root `.env`.
 
 ## Build and preview the web app
 

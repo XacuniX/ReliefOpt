@@ -11,6 +11,16 @@ const PASSWORD = "correct horse battery staple";
 let pool;
 let server;
 let origin;
+const googlePayloads = new Map();
+
+const googleClient = {
+  async verifyIdToken({ idToken, audience }) {
+    assert.equal(audience, TEST_CONFIG.googleClientId);
+    const payload = googlePayloads.get(idToken);
+    if (!payload) throw new Error("Invalid Google credential");
+    return { getPayload: () => payload };
+  },
+};
 
 const users = [
   { id: "auth-admin", username: "admin", name: "Admin User", email: "admin@reliefopt.org", role: "central_admin", status: "Active" },
@@ -45,7 +55,12 @@ before(async () => {
     );
   }
 
-  const app = createApp({ db: pool, config: TEST_CONFIG, logger: { error() {} } });
+  const app = createApp({
+    db: pool,
+    config: TEST_CONFIG,
+    googleClient,
+    logger: { error() {} },
+  });
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   origin = `http://127.0.0.1:${server.address().port}`;
@@ -122,7 +137,118 @@ test("authenticated identity is resolved from the database", async () => {
     status: "Active",
     teamId: null,
     email: "worker@reliefopt.org",
+    avatarUrl: null,
+    authProvider: "local",
   });
+});
+
+test("Google authentication creates and returns a passwordless field worker", async () => {
+  googlePayloads.set("new-google-credential", {
+    sub: "google-new-subject",
+    email: "google.worker@example.com",
+    email_verified: true,
+    name: "Google Worker",
+    picture: "https://example.com/google-worker.png",
+  });
+
+  const response = await request("/api/auth/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ credential: "new-google-credential" }),
+  });
+  assert.equal(response.status, 200);
+  const session = await response.json();
+  assert.equal(session.user.email, "google.worker@example.com");
+  assert.equal(session.user.role, "field_worker");
+  assert.equal(session.user.teamId, null);
+  assert.equal(session.user.avatarUrl, "https://example.com/google-worker.png");
+  assert.equal(session.user.authProvider, "google");
+  assert.match(session.accessToken, /^[^.]+\.[^.]+\.[^.]+$/);
+
+  const stored = await pool.query(
+    `SELECT password_hash, google_id, avatar_url, auth_provider
+     FROM users
+     WHERE id = $1`,
+    [session.user.id],
+  );
+  assert.deepEqual(stored.rows[0], {
+    password_hash: null,
+    google_id: "google-new-subject",
+    avatar_url: "https://example.com/google-worker.png",
+    auth_provider: "google",
+  });
+
+  const repeat = await request("/api/auth/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ credential: "new-google-credential" }),
+  });
+  assert.equal(repeat.status, 200);
+  assert.equal((await repeat.json()).user.id, session.user.id);
+});
+
+test("Google authentication links an existing email account without removing its password", async () => {
+  const passwordHash = await bcrypt.hash(PASSWORD, TEST_CONFIG.bcryptRounds);
+  await pool.query(
+    `INSERT INTO users (id, username, password_hash, name, email, role, status)
+     VALUES ('google-link-user', 'google.link', $1, 'Local Link User', 'link@example.com', 'field_worker', 'Active')`,
+    [passwordHash],
+  );
+  googlePayloads.set("link-google-credential", {
+    sub: "google-link-subject",
+    email: "LINK@example.com",
+    email_verified: true,
+    name: "Google Link Name",
+    picture: "https://example.com/linked.png",
+  });
+
+  const response = await request("/api/auth/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ credential: "link-google-credential" }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).user.id, "google-link-user");
+
+  const stored = await pool.query(
+    "SELECT password_hash, google_id, avatar_url, auth_provider FROM users WHERE id = 'google-link-user'",
+  );
+  assert.equal(await bcrypt.compare(PASSWORD, stored.rows[0].password_hash), true);
+  assert.equal(stored.rows[0].google_id, "google-link-subject");
+  assert.equal(stored.rows[0].avatar_url, "https://example.com/linked.png");
+  assert.equal(stored.rows[0].auth_provider, "google");
+});
+
+test("Google authentication rejects missing, invalid, and unverified credentials", async () => {
+  const missing = await request("/api/auth/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  assert.equal(missing.status, 400);
+  assert.equal((await missing.json()).code, "GOOGLE_CREDENTIAL_REQUIRED");
+
+  const invalid = await request("/api/auth/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ credential: "invalid-google-credential" }),
+  });
+  assert.equal(invalid.status, 401);
+  assert.equal((await invalid.json()).code, "INVALID_GOOGLE_CREDENTIAL");
+
+  googlePayloads.set("unverified-google-credential", {
+    sub: "google-unverified-subject",
+    email: "unverified@example.com",
+    email_verified: false,
+    name: "Unverified User",
+  });
+  const unverified = await request("/api/auth/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ credential: "unverified-google-credential" }),
+  });
+  assert.equal(unverified.status, 401);
+  assert.equal((await unverified.json()).code, "INVALID_GOOGLE_PROFILE");
 });
 
 test("server-side authorization enforces the role matrix", async () => {

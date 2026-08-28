@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { OAuth2Client } from "google-auth-library";
 import { createAuthRouter } from "./auth/routes.js";
 import { allowRoles, createRequireAuth } from "./auth/middleware.js";
 import { AuthService, JwtService } from "./auth/service.js";
@@ -11,10 +12,16 @@ import { WarehouseManagementService } from "./warehouses/service.js";
 import { createSyncRouter } from "./sync/routes.js";
 import { SyncError, SyncService } from "./sync/service.js";
 
-export function createApp({ db, config, version = "0.1.0", logger = console }) {
+export function createApp({
+  db,
+  config,
+  version = "0.1.0",
+  logger = console,
+  googleClient = new OAuth2Client(),
+}) {
   if (!db?.query)
     throw new Error("createApp requires a database with a query method.");
-  if (!config?.jwtSecret)
+  if (!config?.jwtSecret || !config?.googleClientId)
     throw new Error("createApp requires authentication configuration.");
 
   const app = express();
@@ -34,6 +41,8 @@ export function createApp({ db, config, version = "0.1.0", logger = console }) {
     userRepository,
     userManagementService,
     jwtService,
+    googleClient,
+    googleClientId: config.googleClientId,
     bcryptRounds: config.bcryptRounds,
     passwordMinLength: config.passwordMinLength,
   });

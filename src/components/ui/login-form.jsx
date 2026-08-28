@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { User, Lock, ArrowRight } from "lucide-react";
 
 // Vertex shader source code
@@ -184,6 +185,35 @@ export function SmokeyBackground({
   );
 }
 
+function GoogleAuthSection({ enabled, loading, mode, onSuccess, onError }) {
+  if (!enabled) return null;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-slate-300 dark:bg-white/20" />
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-gray-300">
+          or
+        </span>
+        <span className="h-px flex-1 bg-slate-300 dark:bg-white/20" />
+      </div>
+      <div
+        className={`flex min-h-11 justify-center ${loading ? "pointer-events-none opacity-60" : ""}`}
+        aria-busy={loading}
+      >
+        <GoogleLogin
+          onSuccess={onSuccess}
+          onError={onError}
+          text={mode === "register" ? "signup_with" : "signin_with"}
+          shape="rectangular"
+          size="large"
+          theme="outline"
+          width="304"
+        />
+      </div>
+    </div>
+  );
+}
+
 /**
  * A glassmorphism-style login form component with animated labels and Google login.
  */
@@ -194,6 +224,9 @@ export function LoginForm({
   logo = "ReliefOpt",
   className = "",
   onSwitchToRegister,
+  googleEnabled = false,
+  onGoogleSuccess,
+  onGoogleError,
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -265,6 +298,14 @@ export function LoginForm({
           <ArrowRight className="ml-2 h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
         </button>
 
+        <GoogleAuthSection
+          enabled={googleEnabled}
+          loading={loading}
+          mode="login"
+          onSuccess={onGoogleSuccess}
+          onError={onGoogleError}
+        />
+
         {error && (
           <p className="text-sm font-medium text-red-600 dark:text-red-400 text-center" role="alert">
             {error}
@@ -324,6 +365,9 @@ export function RegisterForm({
   logo = "ReliefOpt",
   className = "",
   onSwitchToLogin,
+  googleEnabled = false,
+  onGoogleSuccess,
+  onGoogleError,
 }) {
   const [form, setForm] = useState({
     name: "", email: "", username: "", phone: "", password: "", confirmPassword: "",
@@ -389,6 +433,14 @@ export function RegisterForm({
           {loading ? "Creating account..." : "Create Account"}
           <ArrowRight className="ml-2 h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
         </button>
+
+        <GoogleAuthSection
+          enabled={googleEnabled}
+          loading={loading}
+          mode="register"
+          onSuccess={onGoogleSuccess}
+          onError={onGoogleError}
+        />
 
         {displayedError && (
           <p className="text-sm font-medium text-red-600 dark:text-red-400 text-center" role="alert">

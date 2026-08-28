@@ -3,13 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { LoginForm, RegisterForm, SmokeyBackground } from "../components/ui/login-form";
-
-const DEMO_PASSWORD = "ReliefOpt!123";
-const DEMO_ACCOUNTS = [
-  { label: "Central Admin", username: "rahim", description: "Full coordination access" },
-  { label: "Warehouse Manager", username: "fatima", description: "Inventory and logistics access" },
-  { label: "Field Worker", username: "kamal", description: "Field reporting and tasks" },
-];
+import { googleSignInAvailable } from "../lib/googleAuth";
 
 const REGISTRATION_ERROR_MESSAGES = {
   USERNAME_TAKEN: "That username is already in use.",
@@ -20,7 +14,7 @@ const REGISTRATION_ERROR_MESSAGES = {
 };
 
 export default function LoginPage() {
-  const { login, register } = useAuth();
+  const { login, loginWithGoogle, register } = useAuth();
   const navigate = useNavigate();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -33,6 +27,10 @@ export default function LoginPage() {
     setError("");
   }
 
+  function navigateAfterAuthentication(user) {
+    navigate(user.role === "field_worker" ? "/map" : "/dashboard");
+  }
+
   async function handleSubmit({ username, password }) {
     if (!username.trim() || !password.trim()) {
       setError("Enter your username and password.");
@@ -42,7 +40,7 @@ export default function LoginPage() {
     setError("");
     try {
       const user = await login(username.trim(), password);
-      navigate(user.role === "field_worker" ? "/map" : "/dashboard");
+      navigateAfterAuthentication(user);
     } catch (loginError) {
       if (loginError?.code === "OFFLINE_LOGIN_UNAVAILABLE") {
         setError("You are offline. Fresh login requires Central Command connectivity.");
@@ -61,7 +59,7 @@ export default function LoginPage() {
     setError("");
     try {
       const user = await register(payload);
-      navigate(user.role === "field_worker" ? "/map" : "/dashboard");
+      navigateAfterAuthentication(user);
     } catch (registerError) {
       if (registerError?.code === "OFFLINE_LOGIN_UNAVAILABLE") {
         setError("You are offline. Registration requires Central Command connectivity.");
@@ -75,9 +73,36 @@ export default function LoginPage() {
     }
   }
 
-  function handleDemoLogin(username) {
-    if (loading) return;
-    void handleSubmit({ username, password: DEMO_PASSWORD });
+  async function handleGoogleSuccess(response) {
+    if (!response?.credential) {
+      setError("Google did not return a sign-in credential. Please try again.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const user = await loginWithGoogle(response.credential);
+      navigateAfterAuthentication(user);
+    } catch (googleError) {
+      if (googleError?.code === "OFFLINE_LOGIN_UNAVAILABLE") {
+        setError("You are offline. Google Sign-In requires an internet connection.");
+      } else if (googleError?.code === "NETWORK_UNAVAILABLE") {
+        setError("Central Command is unreachable. Check the server and your connection.");
+      } else if (googleError?.code === "GOOGLE_ACCOUNT_UNAVAILABLE") {
+        setError("This ReliefOpt account is inactive or unavailable.");
+      } else if (["INVALID_GOOGLE_CREDENTIAL", "INVALID_GOOGLE_PROFILE"].includes(googleError?.code)) {
+        setError("Google could not verify this account. Please try again.");
+      } else {
+        setError("Unable to sign in with Google right now. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleGoogleError() {
+    setError("Google Sign-In was canceled or could not be completed.");
   }
 
   return (
@@ -93,6 +118,9 @@ export default function LoginPage() {
             error={error}
             loading={loading}
             onSwitchToRegister={() => switchMode("register")}
+            googleEnabled={googleSignInAvailable}
+            onGoogleSuccess={handleGoogleSuccess}
+            onGoogleError={handleGoogleError}
           />
         ) : (
           <RegisterForm
@@ -100,41 +128,10 @@ export default function LoginPage() {
             error={error}
             loading={loading}
             onSwitchToLogin={() => switchMode("login")}
+            googleEnabled={googleSignInAvailable}
+            onGoogleSuccess={handleGoogleSuccess}
+            onGoogleError={handleGoogleError}
           />
-        )}
-        {mode === "login" && import.meta.env.DEV && (
-          <section className="mt-4 w-full max-w-sm rounded-2xl border border-amber-500/25 bg-white/80 p-4 text-slate-700 shadow-lg shadow-teal-900/5 backdrop-blur-lg dark:bg-white/10 dark:text-gray-200 dark:shadow-black/30" aria-labelledby="developer-portal-title">
-            <div className="mb-3 text-center">
-              <h2 id="developer-portal-title" className="text-sm font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                Developer Demo Portal
-              </h2>
-              <p className="mt-1 text-xs text-slate-500 dark:text-gray-300">
-                One-click sign in for local demo accounts
-              </p>
-            </div>
-            <div className="space-y-2">
-              {DEMO_ACCOUNTS.map((account) => (
-                <button
-                  key={account.username}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleDemoLogin(account.username)}
-                  className="flex w-full items-center justify-between rounded-lg border border-teal-500/20 bg-white/60 px-3 py-2 text-left transition hover:border-teal-500/50 hover:bg-teal-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white/5"
-                >
-                  <span>
-                    <span className="block text-sm font-semibold">{account.label}</span>
-                    <span className="block text-xs text-slate-500 dark:text-gray-300">{account.description}</span>
-                  </span>
-                  <span className="ml-3 rounded-full bg-teal-500/10 px-2 py-1 font-mono text-xs text-teal-700 dark:text-teal-300">
-                    {account.username}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-center text-[11px] text-slate-500 dark:text-gray-300">
-              Development build only · password: <span className="font-mono">{DEMO_PASSWORD}</span>
-            </p>
-          </section>
         )}
         <div className="mt-5 p-3 rounded-md text-sm text-slate-700 dark:text-gray-300 text-center font-medium bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30">
           Internet is required to sign in. Existing unexpired sessions continue offline.

@@ -6,6 +6,9 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => {
   const buildEnv = loadEnv(mode, process.cwd(), "");
+  const googleClientId = (
+    buildEnv.VITE_GOOGLE_CLIENT_ID || buildEnv.GOOGLE_CLIENT_ID || ""
+  ).trim();
   if (mode === "android" && !buildEnv.VITE_API_URL?.trim()) {
     throw new Error(
       "Android builds require VITE_API_URL. Set it to the Central Command LAN or HTTPS URL; phone loopback cannot reach the PC.",
@@ -13,6 +16,9 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    define: {
+      "import.meta.env.VITE_GOOGLE_CLIENT_ID": JSON.stringify(googleClientId),
+    },
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),

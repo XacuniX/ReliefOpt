@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { AuthApiError, fetchCurrentUser, loginWithPassword, registerAccount, updateOwnAccount } from "../lib/authApi";
+import {
+  AuthApiError,
+  fetchCurrentUser,
+  loginWithGoogleCredential,
+  loginWithPassword,
+  registerAccount,
+  updateOwnAccount,
+} from "../lib/authApi";
 import {
   clearCachedSession,
   readCachedSession,
@@ -34,6 +41,23 @@ function AuthProvider({ children }) {
     setAccessToken(null);
     setCurrentUser(null);
     setIsAuthenticated(false);
+  }
+
+  function acceptServerSession(response) {
+    const session = writeCachedSession(response.accessToken);
+    const tokenSession = sessionFromAccessToken(response.accessToken);
+    if (
+      !tokenSession ||
+      tokenSession.user.id !== response.user.id ||
+      tokenSession.user.role !== response.user.role
+    ) {
+      clearSession();
+      throw new AuthApiError("Central Command returned an invalid session.", {
+        code: "INVALID_SESSION",
+      });
+    }
+    acceptSession(session, response.user);
+    return response.user;
   }
 
   useEffect(() => {
@@ -96,28 +120,19 @@ function AuthProvider({ children }) {
   async function login(username, password) {
     if (navigator.onLine === false) throw new OfflineLoginError();
     const response = await loginWithPassword(username, password);
-    const session = writeCachedSession(response.accessToken);
-    const tokenSession = sessionFromAccessToken(response.accessToken);
-    if (
-      !tokenSession ||
-      tokenSession.user.id !== response.user.id ||
-      tokenSession.user.role !== response.user.role
-    ) {
-      clearSession();
-      throw new AuthApiError("Central Command returned an invalid session.", {
-        code: "INVALID_SESSION",
-      });
-    }
-    acceptSession(session, response.user);
-    return response.user;
+    return acceptServerSession(response);
+  }
+
+  async function loginWithGoogle(credential) {
+    if (navigator.onLine === false) throw new OfflineLoginError();
+    const response = await loginWithGoogleCredential(credential);
+    return acceptServerSession(response);
   }
 
   async function register(payload) {
     if (navigator.onLine === false) throw new OfflineLoginError();
     const response = await registerAccount(payload);
-    const session = writeCachedSession(response.accessToken);
-    acceptSession(session, response.user);
-    return response.user;
+    return acceptServerSession(response);
   }
 
   async function updateAccount(payload) {
@@ -150,7 +165,7 @@ function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         currentUser, accessToken, isAuthenticated, authReady,
-        login, register, updateAccount, logout, refreshCurrentUser,
+        login, loginWithGoogle, register, updateAccount, logout, refreshCurrentUser,
       }}
     >
       {children}

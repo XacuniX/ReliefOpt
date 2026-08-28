@@ -35,6 +35,7 @@ await pool.query(`INSERT INTO notifications (id, user_id, type, title, body, is_
 
 const config = {
   jwtSecret: "e2e-only-jwt-secret-with-at-least-32-characters",
+  googleClientId: "e2e-google-client-id.apps.googleusercontent.com",
   jwtIssuer: "reliefopt-central-command-e2e",
   jwtAudience: "reliefopt-client-e2e",
   jwtExpiresInSeconds: 3600,

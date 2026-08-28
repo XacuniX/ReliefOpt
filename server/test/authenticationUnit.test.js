@@ -46,7 +46,7 @@ test("authentication accepts normalized valid credentials and returns a public s
   assert.equal(calls[1], "login:unit-worker");
   assert.deepEqual(session.user, {
     id: "unit-worker", username: "worker", name: "Unit Worker", role: "field_worker", status: "Active", teamId: null,
-    email: "worker@reliefopt.org",
+    email: "worker@reliefopt.org", avatarUrl: null, authProvider: "local",
   });
   assert.equal(jwtService.verify(session.accessToken).av, 4);
 });
@@ -92,7 +92,7 @@ test("authentication middleware rejects missing, malformed, expired, invalidated
   assert.equal(valid.proceeded, true);
   assert.deepEqual(valid.request.auth.user, {
     id: "active", username: "active", name: "Active", role: "warehouse_manager", status: "Active", teamId: null,
-    email: "active@reliefopt.org",
+    email: "active@reliefopt.org", avatarUrl: null, authProvider: "local",
   });
 });
 

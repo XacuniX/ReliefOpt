@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
-import { AccountUpdateError, AuthenticationError } from "./service.js";
+import {
+  AccountUpdateError,
+  AuthenticationError,
+  GoogleAuthenticationError,
+} from "./service.js";
 import { UserManagementError } from "../users/service.js";
 
 function validCredentials(body) {
@@ -11,6 +15,14 @@ function validCredentials(body) {
     typeof body?.password === "string" &&
     body.password.length > 0 &&
     body.password.length <= 256
+  );
+}
+
+function validGoogleCredential(body) {
+  return (
+    typeof body?.credential === "string" &&
+    body.credential.length > 0 &&
+    body.credential.length <= 20_000
   );
 }
 
@@ -43,6 +55,27 @@ export function createAuthRouter({ authService, requireAuth, rateLimitWindowMs, 
     } catch (error) {
       if (error instanceof AuthenticationError) {
         response.status(401).json({ error: "Invalid username or password." });
+        return;
+      }
+      throw error;
+    }
+  });
+
+  router.post("/google", loginLimiter, async (request, response) => {
+    if (!validGoogleCredential(request.body)) {
+      response.status(400).json({
+        error: "A Google credential is required.",
+        code: "GOOGLE_CREDENTIAL_REQUIRED",
+      });
+      return;
+    }
+
+    try {
+      const session = await authService.authenticateWithGoogle(request.body.credential);
+      response.json(session);
+    } catch (error) {
+      if (error instanceof GoogleAuthenticationError) {
+        response.status(error.status).json({ error: error.message, code: error.code });
         return;
       }
       throw error;

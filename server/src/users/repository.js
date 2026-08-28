@@ -5,6 +5,9 @@ const USER_COLUMNS = `
   u.username,
   u.name,
   u.email,
+  u.google_id,
+  u.avatar_url,
+  u.auth_provider,
   u.role,
   u.status,
   u.team_id,
@@ -37,6 +40,9 @@ export function mapUser(row) {
     username: row.username,
     name: row.name,
     email: row.email,
+    googleId: row.google_id ?? null,
+    avatarUrl: row.avatar_url ?? null,
+    authProvider: row.auth_provider ?? "local",
     role: row.role,
     status: row.status,
     teamId: row.team_id ?? null,
@@ -86,6 +92,14 @@ export class UserManagementRepository {
     const result = await this.db.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
       [email],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async findByGoogleId(googleId) {
+    const result = await this.db.query(
+      `SELECT id FROM users WHERE google_id = $1`,
+      [googleId],
     );
     return result.rows[0] ?? null;
   }
@@ -167,12 +181,31 @@ export class UserManagementRepository {
     return result.rowCount === 1;
   }
 
-  async create({ id = randomUUID(), username, passwordHash, name, email, role, status, teamId, phone }) {
+  async create({
+    id = randomUUID(),
+    username,
+    passwordHash = null,
+    name,
+    email,
+    googleId = null,
+    avatarUrl = null,
+    authProvider = "local",
+    role,
+    status,
+    teamId,
+    phone,
+  }) {
     const result = await this.db.query(
-      `INSERT INTO users (id, username, password_hash, name, email, role, status, team_id, phone)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO users (
+         id, username, password_hash, name, email, google_id, avatar_url, auth_provider,
+         role, status, team_id, phone
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING id`,
-      [id, username, passwordHash, name, email, role, status, teamId, phone],
+      [
+        id, username, passwordHash, name, email, googleId, avatarUrl, authProvider,
+        role, status, teamId, phone,
+      ],
     );
     return this.findById(result.rows[0].id);
   }

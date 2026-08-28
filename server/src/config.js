@@ -20,7 +20,7 @@ function parseList(value, fallback = []) {
   return value.split(",").map((entry) => entry.trim()).filter(Boolean);
 }
 
-export function loadConfig(env = process.env) {
+export function loadDatabaseConfig(env = process.env) {
   const nodeEnv = env.NODE_ENV || "development";
   if (!VALID_NODE_ENVS.has(nodeEnv)) {
     throw new Error(`NODE_ENV must be one of: ${Array.from(VALID_NODE_ENVS).join(", ")}.`);
@@ -41,15 +41,8 @@ export function loadConfig(env = process.env) {
     throw new Error("DATABASE_URL must use the postgres:// or postgresql:// protocol.");
   }
 
-  const jwtSecret = env.JWT_SECRET?.trim();
-  if (!jwtSecret || jwtSecret.length < 32) {
-    throw new Error("JWT_SECRET is required and must contain at least 32 characters.");
-  }
-
   return Object.freeze({
     nodeEnv,
-    host: env.HOST?.trim() || "127.0.0.1",
-    port: parseInteger(env.PORT, 4000, "PORT", { max: 65535 }),
     databaseUrl,
     databaseSsl: parseBoolean(env.DATABASE_SSL, nodeEnv === "production", "DATABASE_SSL"),
     databaseSslRejectUnauthorized: parseBoolean(
@@ -64,6 +57,26 @@ export function loadConfig(env = process.env) {
       "DATABASE_CONNECTION_TIMEOUT_MS",
       { max: 120000 },
     ),
+  });
+}
+
+export function loadConfig(env = process.env) {
+  const databaseConfig = loadDatabaseConfig(env);
+
+  const jwtSecret = env.JWT_SECRET?.trim();
+  if (!jwtSecret || jwtSecret.length < 32) {
+    throw new Error("JWT_SECRET is required and must contain at least 32 characters.");
+  }
+
+  const googleClientId = env.GOOGLE_CLIENT_ID?.trim();
+  if (!googleClientId) {
+    throw new Error("GOOGLE_CLIENT_ID is required.");
+  }
+
+  return Object.freeze({
+    ...databaseConfig,
+    host: env.HOST?.trim() || "127.0.0.1",
+    port: parseInteger(env.PORT, 4000, "PORT", { max: 65535 }),
     shutdownTimeoutMs: parseInteger(
       env.SHUTDOWN_TIMEOUT_MS,
       10000,
@@ -75,6 +88,7 @@ export function loadConfig(env = process.env) {
       "http://localhost:5173",
     ]),
     jwtSecret,
+    googleClientId,
     jwtIssuer: env.JWT_ISSUER?.trim() || "reliefopt-central-command",
     jwtAudience: env.JWT_AUDIENCE?.trim() || "reliefopt-client",
     jwtExpiresInSeconds: parseInteger(

@@ -176,6 +176,8 @@ test("user edits are immediately authoritative and preserve ID-based relationshi
     status: "Active",
     teamId: "team-bravo",
     email: "new.worker@reliefopt.org",
+    avatarUrl: null,
+    authProvider: "local",
   });
   assert.equal((await request("/api/warehouse/ping", { token: existingSession.accessToken })).status, 200);
 

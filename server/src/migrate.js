@@ -1,9 +1,9 @@
-import "dotenv/config";
-import { loadConfig } from "./config.js";
+import "./load-env.js";
+import { loadDatabaseConfig } from "./config.js";
 import { runMigrations } from "./db/migrate.js";
 import { createPool } from "./db/pool.js";
 
-const config = loadConfig();
+const config = loadDatabaseConfig();
 const pool = createPool(config);
 
 try {

@@ -47,6 +47,13 @@ export function loginWithPassword(username, password) {
   });
 }
 
+export function loginWithGoogleCredential(credential) {
+  return apiRequest("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ credential }),
+  });
+}
+
 export function fetchCurrentUser(accessToken) {
   return apiRequest("/api/auth/me", {
     headers: { authorization: `Bearer ${accessToken}` },

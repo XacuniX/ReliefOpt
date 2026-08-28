@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 
+const AUTH_USER_COLUMNS = `
+  id, username, password_hash, name, email, role, status, team_id, auth_version,
+  google_id, avatar_url, auth_provider
+`;
+
 const WAREHOUSE_UPDATE_COLUMNS = new Set([
   "name", "latitude", "longitude", "address", "capacity", "manager_name", "manager_phone",
 ]);
@@ -11,7 +16,7 @@ export class UserAuthRepository {
 
   async findByUsername(username) {
     const result = await this.db.query(
-      `SELECT id, username, password_hash, name, email, role, status, team_id, auth_version
+      `SELECT ${AUTH_USER_COLUMNS}
        FROM users
        WHERE LOWER(username) = LOWER($1)`,
       [username],
@@ -21,12 +26,101 @@ export class UserAuthRepository {
 
   async findById(id) {
     const result = await this.db.query(
-      `SELECT id, username, password_hash, name, email, role, status, team_id, auth_version
+      `SELECT ${AUTH_USER_COLUMNS}
        FROM users
        WHERE id = $1`,
       [id],
     );
     return result.rows[0] ?? null;
+  }
+
+  async findByGoogleId(googleId) {
+    const result = await this.db.query(
+      `SELECT ${AUTH_USER_COLUMNS}
+       FROM users
+       WHERE google_id = $1`,
+      [googleId],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async resolveGoogleAccount({ googleId, email, name, avatarUrl, usernameBase }) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const client = await this.db.connect();
+      try {
+        await client.query("BEGIN");
+        let result = await client.query(
+          `SELECT ${AUTH_USER_COLUMNS}
+           FROM users
+           WHERE google_id = $1
+           FOR UPDATE`,
+          [googleId],
+        );
+
+        let user = result.rows[0] ?? null;
+        if (user) {
+          result = await client.query(
+            `UPDATE users
+             SET avatar_url = $2, auth_provider = 'google', updated_at = NOW()
+             WHERE id = $1
+             RETURNING ${AUTH_USER_COLUMNS}`,
+            [user.id, avatarUrl],
+          );
+          user = result.rows[0];
+        } else {
+          result = await client.query(
+            `SELECT ${AUTH_USER_COLUMNS}
+             FROM users
+             WHERE LOWER(email) = LOWER($1)
+             FOR UPDATE`,
+            [email],
+          );
+          user = result.rows[0] ?? null;
+
+          if (user) {
+            result = await client.query(
+              `UPDATE users
+               SET google_id = $2, avatar_url = $3, auth_provider = 'google', updated_at = NOW()
+               WHERE id = $1
+               RETURNING ${AUTH_USER_COLUMNS}`,
+              [user.id, googleId, avatarUrl],
+            );
+            user = result.rows[0];
+          } else {
+            const usernameResult = await client.query(
+              "SELECT id FROM users WHERE LOWER(username) = LOWER($1)",
+              [usernameBase],
+            );
+            const username = usernameResult.rowCount === 0
+              ? usernameBase
+              : `${usernameBase.slice(0, 40)}.${randomUUID().slice(0, 8)}`;
+            result = await client.query(
+              `INSERT INTO users (
+                 id, username, password_hash, name, email, google_id, avatar_url,
+                 auth_provider, role, status, team_id, phone
+               )
+               VALUES ($1, $2, NULL, $3, $4, $5, $6, 'google', 'field_worker', 'Active', NULL, NULL)
+               RETURNING ${AUTH_USER_COLUMNS}`,
+              [randomUUID(), username, name, email, googleId, avatarUrl],
+            );
+            user = result.rows[0];
+          }
+
+          await client.query(
+            "UPDATE snapshot_meta SET snapshot_seq = snapshot_seq + 1, updated_at = NOW() WHERE singleton = TRUE",
+          );
+        }
+
+        await client.query("COMMIT");
+        return user;
+      } catch (error) {
+        await client.query("ROLLBACK");
+        if (error?.code !== "23505" || attempt === 1) throw error;
+      } finally {
+        client.release();
+      }
+    }
+    throw new Error("Unable to resolve Google account.");
   }
 
   async updateLastLogin(id) {

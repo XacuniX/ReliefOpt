@@ -1,5 +1,6 @@
 export const TEST_CONFIG = Object.freeze({
   jwtSecret: "test-only-jwt-secret-with-at-least-32-characters",
+  googleClientId: "test-google-client-id.apps.googleusercontent.com",
   jwtIssuer: "reliefopt-central-command-test",
   jwtAudience: "reliefopt-client-test",
   jwtExpiresInSeconds: 3600,
