@@ -36,21 +36,12 @@ const userService = {
     if (id === "missing") throw new UserManagementError(404, "TEAM_NOT_FOUND", "Team not found.");
     return { deleted: true, unassignedUserIds: ["user-1"] };
   },
-  async createUser(input) {
-    if (input?.username === "duplicate") throw new UserManagementError(409, "USERNAME_TAKEN", "That username is already in use.");
-    if (!input?.username) throw new UserManagementError(400, "VALIDATION_ERROR", "Username is required.");
-    return { id: "user-2", username: input.username, role: input.role || "field_worker" };
-  },
   async updateUser(id, input) {
     if (id === "missing") throw new UserManagementError(404, "USER_NOT_FOUND", "User not found.");
     if (id === "broken") throw new Error("database unavailable");
     return { id, ...input };
   },
   async deactivateUser(id) { return { id, status: "Inactive" }; },
-  async resetPassword(id, password) {
-    if (!password) throw new UserManagementError(400, "WEAK_PASSWORD", "Password must contain 12–128 characters.");
-    return { reset: true, id };
-  },
 };
 
 const syncService = {
@@ -134,26 +125,21 @@ test("user and team routes enforce authentication/admin authorization and preser
   const deletedTeam = await request("/teams/team-1", { method: "DELETE", headers: adminHeaders });
   assert.equal(deletedTeam.status, 200);
   assert.deepEqual(await deletedTeam.json(), { deleted: true, unassignedUserIds: ["user-1"] });
-  const created = await request("/users", { method: "POST", headers: adminHeaders, body: { username: "new.user", role: "field_worker" } });
-  assert.equal(created.status, 201);
-  assert.deepEqual(await created.json(), { user: { id: "user-2", username: "new.user", role: "field_worker" } });
+  assert.equal((await request("/users", { method: "POST", headers: adminHeaders, body: { username: "new.user", role: "field_worker" } })).status, 404);
 });
 
 test("user routes map validation, duplicate, not-found, and unexpected service errors to HTTP contracts", async () => {
   for (const [path, options, status, code] of [
-    ["/users", { method: "POST", body: {} }, 400, "VALIDATION_ERROR"],
     ["/teams", { method: "POST", body: {} }, 400, "VALIDATION_ERROR"],
     ["/teams/missing", { method: "DELETE" }, 404, "TEAM_NOT_FOUND"],
-    ["/users", { method: "POST", body: { username: "duplicate" } }, 409, "USERNAME_TAKEN"],
     ["/users/missing", { method: "PATCH", body: { name: "Missing" } }, 404, "USER_NOT_FOUND"],
-    ["/users/user-1/reset-password", { method: "POST", body: {} }, 400, "WEAK_PASSWORD"],
   ]) {
     const response = await request(path, { ...options, headers: adminHeaders });
     assert.equal(response.status, status);
     assert.equal((await response.json()).code, code);
   }
   assert.deepEqual(await (await request("/users/user-1/deactivate", { method: "POST", headers: adminHeaders })).json(), { user: { id: "user-1", status: "Inactive" } });
-  assert.deepEqual(await (await request("/users/user-1/reset-password", { method: "POST", headers: adminHeaders, body: { password: "a sufficiently long password" } })).json(), { reset: true, id: "user-1" });
+  assert.equal((await request("/users/user-1/reset-password", { method: "POST", headers: adminHeaders, body: { password: "a sufficiently long password" } })).status, 404);
   assert.equal((await request("/users/broken", { method: "PATCH", headers: adminHeaders, body: { name: "Broken" } })).status, 500);
 });
 

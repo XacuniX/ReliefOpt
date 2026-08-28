@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
-import { AuthenticationError } from "./service.js";
+import { AccountUpdateError, AuthenticationError } from "./service.js";
+import { UserManagementError } from "../users/service.js";
 
 function validCredentials(body) {
   return (
@@ -22,6 +23,13 @@ export function createAuthRouter({ authService, requireAuth, rateLimitWindowMs, 
     legacyHeaders: false,
     message: { error: "Too many login attempts. Try again later." },
   });
+  const registerLimiter = rateLimit({
+    windowMs: rateLimitWindowMs,
+    limit: rateLimitMax,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many registration attempts. Try again later." },
+  });
 
   router.post("/login", loginLimiter, async (request, response) => {
     if (!validCredentials(request.body)) {
@@ -41,8 +49,38 @@ export function createAuthRouter({ authService, requireAuth, rateLimitWindowMs, 
     }
   });
 
+  router.post("/register", registerLimiter, async (request, response) => {
+    try {
+      const session = await authService.register(request.body);
+      response.status(201).json(session);
+    } catch (error) {
+      if (error instanceof UserManagementError) {
+        response.status(error.status).json({ error: error.message, code: error.code });
+        return;
+      }
+      throw error;
+    }
+  });
+
   router.get("/me", requireAuth, (request, response) => {
     response.json({ user: request.auth.user });
+  });
+
+  router.patch("/me", requireAuth, async (request, response) => {
+    try {
+      const result = await authService.updateOwnAccount(request.auth.user.id, request.body);
+      response.json(result);
+    } catch (error) {
+      if (error instanceof AccountUpdateError) {
+        response.status(error.status).json({ error: error.message, code: error.code });
+        return;
+      }
+      if (error instanceof AuthenticationError) {
+        response.status(401).json({ error: "Authentication required." });
+        return;
+      }
+      throw error;
+    }
   });
 
   return router;

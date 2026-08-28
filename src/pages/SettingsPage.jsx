@@ -3,12 +3,95 @@ import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import { usePreferences } from "../context/PreferencesContext";
 import { useTheme } from "../context/ThemeContext";
-import { Badge, Button, Card, Toast } from "../components/ui";
+import { AuthApiError } from "../lib/authApi";
+import { Badge, Button, Card, Input, Toast } from "../components/ui";
 import { clearDomainCache } from "../lib/db";
 import { clearTileCache, getTileCacheLimit, getTileCacheSize, setTileCacheLimit } from "../lib/tileCache";
 
+const ACCOUNT_UPDATE_ERROR_MESSAGES = {
+  CURRENT_PASSWORD_REQUIRED: "Enter your current password to continue.",
+  INVALID_CURRENT_PASSWORD: "Current password is incorrect.",
+  EMAIL_TAKEN: "That email is already in use.",
+  PASSWORD_MISMATCH: "New password confirmation does not match.",
+  WEAK_PASSWORD: "New password must contain at least 12 characters.",
+  VALIDATION_ERROR: "Enter a valid email address.",
+};
+
+const emptySecurityForm = { email: "", currentPassword: "", newPassword: "", confirmNewPassword: "" };
+
+function AccountSecuritySection({ currentUser, updateAccount }) {
+  const [form, setForm] = useState({ ...emptySecurityForm, email: currentUser.email || "" });
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
+
+  async function submit(event) {
+    event.preventDefault();
+    setError("");
+    if (!form.currentPassword) {
+      setError("Enter your current password to continue.");
+      return;
+    }
+    if (form.newPassword && form.newPassword !== form.confirmNewPassword) {
+      setError("New password confirmation does not match.");
+      return;
+    }
+    if (form.newPassword && form.newPassword.length < 12) {
+      setError("New password must contain at least 12 characters.");
+      return;
+    }
+    const emailChanged = form.email.trim() && form.email.trim() !== currentUser.email;
+    if (!emailChanged && !form.newPassword) {
+      setError("Change your email or set a new password before saving.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const changingPassword = Boolean(form.newPassword);
+      await updateAccount({
+        ...(emailChanged ? { email: form.email.trim() } : {}),
+        currentPassword: form.currentPassword,
+        ...(changingPassword ? { newPassword: form.newPassword, confirmNewPassword: form.confirmNewPassword } : {}),
+      });
+      // A password change signs the session out (see AuthContext.updateAccount), which unmounts
+      // this page — skip the state update rather than setting state on an unmounted component.
+      if (!changingPassword) {
+        setForm({ ...emptySecurityForm, email: emailChanged ? form.email.trim() : currentUser.email || "" });
+      }
+    } catch (updateError) {
+      if (updateError instanceof AuthApiError) {
+        setError(ACCOUNT_UPDATE_ERROR_MESSAGES[updateError.code] || "Unable to update your account.");
+      } else {
+        setError("Unable to update your account.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <form onSubmit={submit}>
+        <Input label="Email" type="email" value={form.email} onChange={update("email")} autoComplete="email" />
+        <Input label="New Password (optional)" type="password" value={form.newPassword} onChange={update("newPassword")} autoComplete="new-password" minLength={12} />
+        <Input label="Confirm New Password" type="password" value={form.confirmNewPassword} onChange={update("confirmNewPassword")} autoComplete="new-password" minLength={12} />
+        <Input label="Current Password" type="password" value={form.currentPassword} onChange={update("currentPassword")} autoComplete="current-password" required />
+        {form.newPassword && (
+          <p className="text-sm text-amber-700 dark:text-amber-400 -mt-2 mb-4">
+            Changing your password signs out this session.
+          </p>
+        )}
+        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
+        <Button type="submit" loading={saving}>Save Changes</Button>
+      </form>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, updateAccount } = useAuth();
   const { lastSyncedAt, refreshSnapshot } = useData();
   const { theme, setTheme } = useTheme();
   const { language, notificationSound, setLanguage, setNotificationSound, t } = usePreferences();
@@ -65,8 +148,14 @@ export default function SettingsPage() {
               <Badge color={roleColors[currentUser.role]} text={currentUser.role.replace(/_/g, " ")} />
             </div>
           </div>
+          <p className="mb-2 text-sm"><strong>Email:</strong> {currentUser.email}</p>
           <p className="text-sm"><strong>User ID:</strong> {currentUser.id}</p>
         </Card>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-4 text-lg font-bold">Security</h2>
+        <AccountSecuritySection currentUser={currentUser} updateAccount={updateAccount} />
       </section>
 
       <section className="mb-8">

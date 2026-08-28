@@ -28,7 +28,7 @@ async function invoke(middleware, { authorization, auth } = {}) {
 test("authentication accepts normalized valid credentials and returns a public session", async () => {
   const passwordHash = await bcrypt.hash("safe password", TEST_CONFIG.bcryptRounds);
   const user = {
-    id: "unit-worker", username: "worker", name: "Unit Worker", role: "field_worker",
+    id: "unit-worker", username: "worker", name: "Unit Worker", email: "worker@reliefopt.org", role: "field_worker",
     status: "Active", auth_version: 4, password_hash: passwordHash,
   };
   const calls = [];
@@ -46,6 +46,7 @@ test("authentication accepts normalized valid credentials and returns a public s
   assert.equal(calls[1], "login:unit-worker");
   assert.deepEqual(session.user, {
     id: "unit-worker", username: "worker", name: "Unit Worker", role: "field_worker", status: "Active", teamId: null,
+    email: "worker@reliefopt.org",
   });
   assert.equal(jwtService.verify(session.accessToken).av, 4);
 });
@@ -68,7 +69,10 @@ test("authentication rejects unknown users, wrong passwords, inactive accounts, 
 });
 
 test("authentication middleware rejects missing, malformed, expired, invalidated, and unknown-user sessions", async () => {
-  const active = { id: "active", username: "active", name: "Active", role: "warehouse_manager", status: "Active", auth_version: 2 };
+  const active = {
+    id: "active", username: "active", name: "Active", email: "active@reliefopt.org",
+    role: "warehouse_manager", status: "Active", auth_version: 2,
+  };
   const requireAuth = createRequireAuth({
     jwtService,
     userRepository: { async findById(id) { return id === "active" ? active : null; } },
@@ -88,6 +92,7 @@ test("authentication middleware rejects missing, malformed, expired, invalidated
   assert.equal(valid.proceeded, true);
   assert.deepEqual(valid.request.auth.user, {
     id: "active", username: "active", name: "Active", role: "warehouse_manager", status: "Active", teamId: null,
+    email: "active@reliefopt.org",
   });
 });
 

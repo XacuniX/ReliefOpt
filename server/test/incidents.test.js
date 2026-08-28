@@ -38,9 +38,9 @@ before(async () => {
   await runMigrations({ db: pool });
   await pool.query("INSERT INTO teams (id, name) VALUES ('incident-team', 'Incident Team')");
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [actor.id, "incident.worker", "not-used-by-service-tests", actor.name, "field_worker", "Active"],
+    `INSERT INTO users (id, username, password_hash, name, email, role, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [actor.id, "incident.worker", "not-used-by-service-tests", actor.name, "incident.worker@reliefopt.org", "field_worker", "Active"],
   );
   service = new SyncService(pool);
 });

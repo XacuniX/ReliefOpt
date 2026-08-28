@@ -33,9 +33,9 @@ before(async () => {
   pool = new (database.adapters.createPg().Pool)();
   await runMigrations({ db: pool });
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status)
-     VALUES ('offline-worker', 'offline.worker', 'unused', 'Offline Worker', 'field_worker', 'Active'),
-            ('offline-admin', 'offline.admin', 'unused', 'Offline Admin', 'central_admin', 'Active')`,
+    `INSERT INTO users (id, username, password_hash, name, email, role, status)
+     VALUES ('offline-worker', 'offline.worker', 'unused', 'Offline Worker', 'offline.worker@reliefopt.org', 'field_worker', 'Active'),
+            ('offline-admin', 'offline.admin', 'unused', 'Offline Admin', 'offline.admin@reliefopt.org', 'central_admin', 'Active')`,
   );
   service = new SyncService(pool);
 });

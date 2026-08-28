@@ -33,9 +33,9 @@ before(async () => {
   await runMigrations({ db: pool });
   await pool.query("INSERT INTO warehouses (id, name) VALUES ('resource-warehouse', 'Resource Warehouse')");
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [actor.id, "resource.manager", "not-used-by-service-tests", actor.name, "warehouse_manager", "Active"],
+    `INSERT INTO users (id, username, password_hash, name, email, role, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [actor.id, "resource.manager", "not-used-by-service-tests", actor.name, "resource.manager@reliefopt.org", "warehouse_manager", "Active"],
   );
   service = new SyncService(pool);
 });

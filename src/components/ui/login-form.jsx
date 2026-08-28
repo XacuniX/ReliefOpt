@@ -193,6 +193,7 @@ export function LoginForm({
   loading = false,
   logo = "ReliefOpt",
   className = "",
+  onSwitchToRegister,
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -269,6 +270,138 @@ export function LoginForm({
             {error}
           </p>
         )}
+
+        {onSwitchToRegister && (
+          <p className="text-center text-sm text-slate-600 dark:text-gray-300">
+            Don&apos;t have an account?{" "}
+            <button type="button" onClick={onSwitchToRegister} className="font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+              Register
+            </button>
+          </p>
+        )}
+      </form>
+    </div>
+  );
+}
+
+/**
+ * A floating-label text input matching the glassmorphism style used across the auth forms.
+ */
+function FloatingField({ id, label, icon, value, onChange, type = "text", autoComplete }) {
+  return (
+    <div className="relative z-0">
+      <input
+        type={type}
+        id={id}
+        value={value}
+        onChange={onChange}
+        className="block py-2.5 px-0 w-full text-sm text-slate-900 dark:text-white bg-transparent border-0 border-b-2 border-slate-300 dark:border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-teal-500 dark:focus:border-blue-500 peer"
+        placeholder=" "
+        autoComplete={autoComplete}
+        required
+      />
+      <label
+        htmlFor={id}
+        className="absolute text-sm text-slate-500 dark:text-gray-300 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-teal-600 dark:peer-focus:text-blue-400 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+      >
+        {icon}
+        {label}
+      </label>
+    </div>
+  );
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Public self-registration form. Always signs up as a Field Worker with no team assignment;
+ * an admin can promote the account and assign a team later from the Users panel.
+ */
+export function RegisterForm({
+  onSubmit,
+  error = "",
+  loading = false,
+  logo = "ReliefOpt",
+  className = "",
+  onSwitchToLogin,
+}) {
+  const [form, setForm] = useState({
+    name: "", email: "", username: "", phone: "", password: "", confirmPassword: "",
+  });
+  const [validationError, setValidationError] = useState("");
+
+  const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    setValidationError("");
+    if (!form.name.trim() || !form.email.trim() || !form.username.trim() || !form.phone.trim()) {
+      setValidationError("Fill in every field to create an account.");
+      return;
+    }
+    if (!EMAIL_PATTERN.test(form.email.trim())) {
+      setValidationError("Enter a valid email address.");
+      return;
+    }
+    if (form.password.length < 12) {
+      setValidationError("Password must contain at least 12 characters.");
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setValidationError("Password confirmation does not match.");
+      return;
+    }
+    onSubmit?.({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      username: form.username.trim(),
+      phone: form.phone.trim(),
+      password: form.password,
+      confirmPassword: form.confirmPassword,
+    });
+  }
+
+  const displayedError = validationError || error;
+
+  return (
+    <div className={`w-full max-w-sm p-8 space-y-6 rounded-2xl bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-teal-500/20 dark:border-white/20 shadow-lg shadow-teal-900/5 dark:shadow-black/30 ${className}`}>
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{logo}</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-gray-300">Create a Field Worker account</p>
+      </div>
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        <FloatingField id="register_name" label="Full Name" value={form.name} onChange={update("name")} autoComplete="name" />
+        <FloatingField id="register_email" label="Email" type="email" value={form.email} onChange={update("email")} autoComplete="email" />
+        <FloatingField id="register_username" label="Username" value={form.username} onChange={update("username")} autoComplete="username" />
+        <FloatingField id="register_phone" label="Phone Number" type="tel" value={form.phone} onChange={update("phone")} autoComplete="tel" />
+        <FloatingField id="register_password" label="Password" type="password" value={form.password} onChange={update("password")} autoComplete="new-password" />
+        <FloatingField id="register_confirm_password" label="Confirm Password" type="password" value={form.confirmPassword} onChange={update("confirmPassword")} autoComplete="new-password" />
+
+        <p className="text-xs text-slate-500 dark:text-gray-300">
+          New accounts start as Field Worker with no team assignment. An admin can update your role and team later.
+        </p>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="group w-full flex items-center justify-center py-3 px-4 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 rounded-lg text-white font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:ring-teal-500 transition-all duration-300"
+        >
+          {loading ? "Creating account..." : "Create Account"}
+          <ArrowRight className="ml-2 h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
+        </button>
+
+        {displayedError && (
+          <p className="text-sm font-medium text-red-600 dark:text-red-400 text-center" role="alert">
+            {displayedError}
+          </p>
+        )}
+
+        <p className="text-center text-sm text-slate-600 dark:text-gray-300">
+          Already have an account?{" "}
+          <button type="button" onClick={onSwitchToLogin} className="font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+            Sign in
+          </button>
+        </p>
       </form>
     </div>
   );

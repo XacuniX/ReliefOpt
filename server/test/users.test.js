@@ -8,8 +8,6 @@ import { TEST_CONFIG } from "../test-support/helpers.js";
 
 const ADMIN_PASSWORD = "admin password 123";
 const USER_PASSWORD = "worker password 123";
-const RESET_PASSWORD = "replacement pass 456";
-const SECOND_RESET_PASSWORD = "another secure pass 789";
 
 let pool;
 let server;
@@ -47,9 +45,15 @@ before(async () => {
   );
   const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, TEST_CONFIG.bcryptRounds);
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status)
-     VALUES ('admin-primary', 'primary.admin', $1, 'Primary Admin', 'central_admin', 'Active')`,
+    `INSERT INTO users (id, username, password_hash, name, email, role, status)
+     VALUES ('admin-primary', 'primary.admin', $1, 'Primary Admin', 'primary.admin@reliefopt.org', 'central_admin', 'Active')`,
     [passwordHash],
+  );
+  const workerPasswordHash = await bcrypt.hash(USER_PASSWORD, TEST_CONFIG.bcryptRounds);
+  await pool.query(
+    `INSERT INTO users (id, username, password_hash, name, email, role, status, team_id, phone)
+     VALUES ('seed-new-worker', 'new.worker', $1, 'New Worker', 'new.worker@reliefopt.org', 'field_worker', 'Active', 'team-alpha', '+8801700000000')`,
+    [workerPasswordHash],
   );
 
   const app = createApp({ db: pool, config: TEST_CONFIG, logger: { error() {} } });
@@ -69,8 +73,8 @@ after(async () => {
 test("only Central Admin can access user and team administration", async () => {
   const createdHash = await bcrypt.hash(USER_PASSWORD, TEST_CONFIG.bcryptRounds);
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status)
-     VALUES ('authorization-worker', 'authorization.worker', $1, 'Authorization Worker', 'field_worker', 'Active')`,
+    `INSERT INTO users (id, username, password_hash, name, email, role, status)
+     VALUES ('authorization-worker', 'authorization.worker', $1, 'Authorization Worker', 'authorization.worker@reliefopt.org', 'field_worker', 'Active')`,
     [createdHash],
   );
   const workerToken = (await (await login("authorization.worker", USER_PASSWORD)).json()).accessToken;
@@ -109,64 +113,20 @@ test("an admin can create a team for later user assignment", async () => {
   assert.equal((await duplicate.json()).code, "TEAM_NAME_TAKEN");
 });
 
-test("an admin can create a user who can immediately authenticate", async () => {
-  const response = await request("/api/users", {
+test("admin user creation and password reset endpoints no longer exist", async () => {
+  const create = await request("/api/users", {
     token: adminToken,
     method: "POST",
-    body: JSON.stringify({
-      username: "new.worker",
-      password: USER_PASSWORD,
-      name: "New Worker",
-      role: "field_worker",
-      status: "Active",
-      teamId: "team-alpha",
-      phone: "+8801700000000",
-    }),
+    body: JSON.stringify({ username: "should.not.exist", password: USER_PASSWORD, name: "Nope" }),
   });
-  assert.equal(response.status, 201);
-  const { user } = await response.json();
-  assert.equal(user.username, "new.worker");
-  assert.equal(user.teamId, "team-alpha");
-  assert.equal(user.teamName, "Alpha Team");
-  assert.equal(user.password, undefined);
-  assert.equal(user.passwordHash, undefined);
+  assert.equal(create.status, 404);
 
-  const loginResponse = await login("new.worker", USER_PASSWORD);
-  assert.equal(loginResponse.status, 200);
-  assert.equal((await loginResponse.json()).user.id, user.id);
-});
-
-test("creation rejects weak passwords, unknown teams, and duplicate usernames", async () => {
-  const base = {
-    username: "invalid.worker",
-    name: "Invalid Worker",
-    role: "field_worker",
-    status: "Active",
-    teamId: "team-alpha",
-  };
-  const weak = await request("/api/users", {
+  const reset = await request("/api/users/seed-new-worker/reset-password", {
     token: adminToken,
     method: "POST",
-    body: JSON.stringify({ ...base, password: "short" }),
+    body: JSON.stringify({ password: "irrelevant password value" }),
   });
-  assert.equal(weak.status, 400);
-  assert.equal((await weak.json()).code, "WEAK_PASSWORD");
-
-  const invalidTeam = await request("/api/users", {
-    token: adminToken,
-    method: "POST",
-    body: JSON.stringify({ ...base, password: USER_PASSWORD, teamId: "missing-team" }),
-  });
-  assert.equal(invalidTeam.status, 400);
-  assert.equal((await invalidTeam.json()).code, "INVALID_TEAM");
-
-  const duplicate = await request("/api/users", {
-    token: adminToken,
-    method: "POST",
-    body: JSON.stringify({ ...base, username: "new.worker", password: USER_PASSWORD }),
-  });
-  assert.equal(duplicate.status, 409);
-  assert.equal((await duplicate.json()).code, "USERNAME_TAKEN");
+  assert.equal(reset.status, 404);
 });
 
 test("user edits are immediately authoritative and preserve ID-based relationships", async () => {
@@ -215,6 +175,7 @@ test("user edits are immediately authoritative and preserve ID-based relationshi
     role: "warehouse_manager",
     status: "Active",
     teamId: "team-bravo",
+    email: "new.worker@reliefopt.org",
   });
   assert.equal((await request("/api/warehouse/ping", { token: existingSession.accessToken })).status, 200);
 
@@ -232,9 +193,9 @@ test("a departing leader is reassigned, then cleared when no eligible members re
      VALUES ('team-leader-test', 'Leader Transfer Team', 'Standby', 'Dhaka')`,
   );
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status, team_id)
-     VALUES ('team-leader-test-user', 'team.leader', $1, 'Team Leader', 'field_worker', 'Active', 'team-leader-test'),
-            ('team-backup-test-user', 'team.backup', $1, 'Backup Member', 'field_worker', 'Active', 'team-leader-test')`,
+    `INSERT INTO users (id, username, password_hash, name, email, role, status, team_id)
+     VALUES ('team-leader-test-user', 'team.leader', $1, 'Team Leader', 'team.leader@reliefopt.org', 'field_worker', 'Active', 'team-leader-test'),
+            ('team-backup-test-user', 'team.backup', $1, 'Backup Member', 'team.backup@reliefopt.org', 'field_worker', 'Active', 'team-leader-test')`,
     [passwordHash],
   );
   await pool.query(
@@ -273,9 +234,9 @@ test("deleting a team unassigns all of its members", async () => {
      VALUES ('team-delete-test', 'Delete Test Team', 'Standby', 'Dhaka')`,
   );
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status, team_id)
-     VALUES ('team-delete-member-a', 'delete.member.a', $1, 'Delete Member A', 'field_worker', 'Active', 'team-delete-test'),
-            ('team-delete-member-b', 'delete.member.b', $1, 'Delete Member B', 'field_worker', 'Active', 'team-delete-test')`,
+    `INSERT INTO users (id, username, password_hash, name, email, role, status, team_id)
+     VALUES ('team-delete-member-a', 'delete.member.a', $1, 'Delete Member A', 'delete.member.a@reliefopt.org', 'field_worker', 'Active', 'team-delete-test'),
+            ('team-delete-member-b', 'delete.member.b', $1, 'Delete Member B', 'delete.member.b@reliefopt.org', 'field_worker', 'Active', 'team-delete-test')`,
     [passwordHash],
   );
 
@@ -296,36 +257,33 @@ test("deleting a team unassigns all of its members", async () => {
   assert.equal((await pool.query("SELECT id FROM teams WHERE id = 'team-delete-test'")).rowCount, 0);
 });
 
-test("password reset revokes existing tokens and changes login credentials", async () => {
-  const userRow = await pool.query("SELECT id FROM users WHERE username = 'renamed.manager'");
-  const userId = userRow.rows[0].id;
-  const oldSession = await (await login("renamed.manager", USER_PASSWORD)).json();
+test("admin edits cannot change a user's email or password", async () => {
+  const userRow = await pool.query("SELECT id, email FROM users WHERE username = 'renamed.manager'");
+  const { id: userId, email: originalEmail } = userRow.rows[0];
+
   const response = await request(`/api/users/${userId}`, {
     token: adminToken,
     method: "PATCH",
-    body: JSON.stringify({ password: RESET_PASSWORD }),
+    body: JSON.stringify({
+      name: "Renamed Manager Two",
+      email: "admin.set@example.com",
+      password: "an admin cannot set this",
+    }),
   });
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).user.id, userId);
-  assert.equal((await request("/api/auth/me", { token: oldSession.accessToken })).status, 401);
-  assert.equal((await login("renamed.manager", USER_PASSWORD)).status, 401);
-  const resetSession = await (await login("renamed.manager", RESET_PASSWORD)).json();
+  const updated = (await response.json()).user;
+  assert.equal(updated.name, "Renamed Manager Two");
+  assert.equal(updated.email, originalEmail);
 
-  const dedicatedReset = await request(`/api/users/${userId}/reset-password`, {
-    token: adminToken,
-    method: "POST",
-    body: JSON.stringify({ password: SECOND_RESET_PASSWORD }),
-  });
-  assert.equal(dedicatedReset.status, 200);
-  assert.deepEqual(await dedicatedReset.json(), { reset: true });
-  assert.equal((await request("/api/auth/me", { token: resetSession.accessToken })).status, 401);
-  assert.equal((await login("renamed.manager", SECOND_RESET_PASSWORD)).status, 200);
+  const stored = await pool.query("SELECT email, password_hash FROM users WHERE id = $1", [userId]);
+  assert.equal(stored.rows[0].email, originalEmail);
+  assert.equal((await login("renamed.manager", USER_PASSWORD)).status, 200);
 });
 
 test("deactivation blocks current authorization and future login", async () => {
   const userRow = await pool.query("SELECT id FROM users WHERE username = 'renamed.manager'");
   const userId = userRow.rows[0].id;
-  const activeSession = await (await login("renamed.manager", SECOND_RESET_PASSWORD)).json();
+  const activeSession = await (await login("renamed.manager", USER_PASSWORD)).json();
   const response = await request(`/api/users/${userId}/deactivate`, {
     token: adminToken,
     method: "POST",
@@ -333,7 +291,7 @@ test("deactivation blocks current authorization and future login", async () => {
   assert.equal(response.status, 200);
   assert.equal((await response.json()).user.status, "Inactive");
   assert.equal((await request("/api/auth/me", { token: activeSession.accessToken })).status, 401);
-  assert.equal((await login("renamed.manager", SECOND_RESET_PASSWORD)).status, 401);
+  assert.equal((await login("renamed.manager", USER_PASSWORD)).status, 401);
 });
 
 test("the final active admin cannot remove their own access", async () => {

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "../components/RoleGate";
-import { Button, Input, Select, Toast, Loader } from "../components/ui";
+import { Input, Select, Toast, Loader } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import { AuthApiError } from "../lib/authApi";
 import {
   createTeam,
-  createUser,
   deleteTeam,
   deactivateUser,
   fetchTeams,
@@ -83,24 +82,12 @@ function UsersContent() {
 
   async function saveUser(formUser) {
     const { id, ...payload } = formUser;
-    const response = id
-      ? await updateUser(accessToken, id, payload)
-      : await createUser(accessToken, payload);
+    const response = await updateUser(accessToken, id, payload);
     const savedUser = normalizeUser(response.user);
-    const nextUsers = id
-      ? users.map((user) => (user.id === id ? savedUser : user))
-      : [savedUser, ...users];
-    cacheUsers(nextUsers);
+    cacheUsers(users.map((user) => (user.id === id ? savedUser : user)));
 
-    if (id === currentUser.id && payload.password) {
-      logout();
-      return;
-    }
     if (id === currentUser.id) await refreshCurrentUser();
-    setToast({
-      type: "success",
-      message: id ? `${savedUser.name} was updated.` : `${savedUser.name} can now sign in.`,
-    });
+    setToast({ type: "success", message: `${savedUser.name} was updated.` });
   }
 
   async function saveTeam(formTeam) {
@@ -149,7 +136,6 @@ function UsersContent() {
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-foreground">Users</h1>
-        <Button onClick={() => { setEditingUser(null); setModalOpen(true); }}>+ Add User</Button>
       </div>
 
       <div className="flex flex-wrap gap-4 mb-4">

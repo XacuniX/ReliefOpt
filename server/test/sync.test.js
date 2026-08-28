@@ -51,9 +51,9 @@ before(async () => {
   );
   const passwordHash = await bcrypt.hash(PASSWORD, TEST_CONFIG.bcryptRounds);
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status, team_id)
-     VALUES ('sync-admin', 'sync.admin', $1, 'Sync Admin', 'central_admin', 'Active', 'sync-team'),
-            ('sync-worker', 'sync.worker', $1, 'Sync Worker', 'field_worker', 'Active', 'sync-team')`,
+    `INSERT INTO users (id, username, password_hash, name, email, role, status, team_id)
+     VALUES ('sync-admin', 'sync.admin', $1, 'Sync Admin', 'sync.admin@reliefopt.org', 'central_admin', 'Active', 'sync-team'),
+            ('sync-worker', 'sync.worker', $1, 'Sync Worker', 'sync.worker@reliefopt.org', 'field_worker', 'Active', 'sync-team')`,
     [passwordHash],
   );
   const app = createApp({

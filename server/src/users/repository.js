@@ -4,6 +4,7 @@ const USER_COLUMNS = `
   u.id,
   u.username,
   u.name,
+  u.email,
   u.role,
   u.status,
   u.team_id,
@@ -35,6 +36,7 @@ export function mapUser(row) {
     id: row.id,
     username: row.username,
     name: row.name,
+    email: row.email,
     role: row.role,
     status: row.status,
     teamId: row.team_id ?? null,
@@ -68,6 +70,22 @@ export class UserManagementRepository {
        LEFT JOIN teams t ON t.id = u.team_id
        WHERE u.id = $1`,
       [id],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async findByUsername(username) {
+    const result = await this.db.query(
+      "SELECT id FROM users WHERE LOWER(username) = LOWER($1)",
+      [username],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async findByEmail(email) {
+    const result = await this.db.query(
+      "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
+      [email],
     );
     return result.rows[0] ?? null;
   }
@@ -149,12 +167,12 @@ export class UserManagementRepository {
     return result.rowCount === 1;
   }
 
-  async create({ id = randomUUID(), username, passwordHash, name, role, status, teamId, phone }) {
+  async create({ id = randomUUID(), username, passwordHash, name, email, role, status, teamId, phone }) {
     const result = await this.db.query(
-      `INSERT INTO users (id, username, password_hash, name, role, status, team_id, phone)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO users (id, username, password_hash, name, email, role, status, team_id, phone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
-      [id, username, passwordHash, name, role, status, teamId, phone],
+      [id, username, passwordHash, name, email, role, status, teamId, phone],
     );
     return this.findById(result.rows[0].id);
   }
@@ -206,17 +224,6 @@ export class UserManagementRepository {
       [teamId, replacementId],
     );
     return true;
-  }
-
-  async resetPassword(id, passwordHash) {
-    const result = await this.db.query(
-      `UPDATE users
-       SET password_hash = $2, auth_version = auth_version + 1, updated_at = NOW()
-       WHERE id = $1
-       RETURNING id`,
-      [id, passwordHash],
-    );
-    return result.rowCount === 1;
   }
 
   async countOtherActiveAdmins(id) {

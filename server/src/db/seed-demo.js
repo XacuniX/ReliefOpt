@@ -63,18 +63,19 @@ export async function seedDemoData({ db, password, bcryptRounds }) {
     }
     for (const user of demoUsers) {
       await client.query(
-        `INSERT INTO users (id, username, password_hash, name, role, status, team_id, phone)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO users (id, username, password_hash, name, email, role, status, team_id, phone)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (id) DO UPDATE SET
            username = EXCLUDED.username,
            password_hash = EXCLUDED.password_hash,
            name = EXCLUDED.name,
+           email = EXCLUDED.email,
            role = EXCLUDED.role,
            status = EXCLUDED.status,
            team_id = EXCLUDED.team_id,
            phone = EXCLUDED.phone,
            updated_at = NOW()`,
-        [user.id, user.username, passwordHash, user.name, user.role, user.status, user.teamId, user.phone],
+        [user.id, user.username, passwordHash, user.name, user.email, user.role, user.status, user.teamId, user.phone],
       );
     }
     for (const team of demoTeams) {

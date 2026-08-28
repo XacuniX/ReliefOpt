@@ -5,6 +5,7 @@ const ROLES = new Set(["central_admin", "warehouse_manager", "field_worker"]);
 const STATUSES = new Set(["Active", "Inactive", "Offline"]);
 const TEAM_STATUSES = new Set(["Deployed", "Standby", "Offline"]);
 const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{2,49}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export class UserManagementError extends Error {
   constructor(status, code, message) {
@@ -41,6 +42,14 @@ function normalizeUsername(value) {
     );
   }
   return username;
+}
+
+export function normalizeEmail(value) {
+  const email = requiredText(value, "Email", 255).toLowerCase();
+  if (!EMAIL_PATTERN.test(email)) {
+    throw new UserManagementError(400, "VALIDATION_ERROR", "Enter a valid email address.");
+  }
+  return email;
 }
 
 function normalizeRole(value) {
@@ -87,6 +96,10 @@ function validatePassword(password, minimumLength) {
 
 function translateDatabaseError(error) {
   if (error?.code === "23505" || /duplicate key|unique constraint/i.test(error?.message || "")) {
+    const detail = `${error?.constraint || ""} ${error?.message || ""}`.toLowerCase();
+    if (detail.includes("email")) {
+      return new UserManagementError(409, "EMAIL_TAKEN", "That email is already in use.");
+    }
     return new UserManagementError(409, "USERNAME_TAKEN", "That username is already in use.");
   }
   return error;
@@ -159,23 +172,31 @@ export class UserManagementService {
     }
   }
 
-  async createUser(input) {
+  /** Public self-registration: always a field_worker with no team, unlike admin-managed accounts. */
+  async registerPublicUser(input) {
     const user = {
       username: normalizeUsername(input?.username),
       name: requiredText(input?.name, "Name", 100),
-      role: normalizeRole(input?.role),
-      status: normalizeStatus(input?.status || "Active"),
-      teamId: normalizeTeamId(input?.teamId),
+      email: normalizeEmail(input?.email),
+      role: "field_worker",
+      status: "Active",
+      teamId: null,
       phone: normalizePhone(input?.phone),
     };
+    if (input?.password !== input?.confirmPassword) {
+      throw new UserManagementError(400, "PASSWORD_MISMATCH", "Password confirmation does not match.");
+    }
     const password = validatePassword(input?.password, this.passwordMinLength);
     const passwordHash = await bcrypt.hash(password, this.bcryptRounds);
 
     return this.withTransaction(async (repository) => {
-      if (!(await repository.teamExists(user.teamId))) {
-        throw new UserManagementError(400, "INVALID_TEAM", "The selected team does not exist.");
+      if (await repository.findByUsername(user.username)) {
+        throw new UserManagementError(409, "USERNAME_TAKEN", "That username is already in use.");
       }
-      const created = mapUser(await repository.create({ ...user, passwordHash }));
+      if (await repository.findByEmail(user.email)) {
+        throw new UserManagementError(409, "EMAIL_TAKEN", "That email is already in use.");
+      }
+      const created = await repository.create({ ...user, passwordHash });
       await advanceSnapshot(repository);
       return created;
     });
@@ -190,10 +211,7 @@ export class UserManagementService {
     if (Object.hasOwn(source, "status")) patch.status = normalizeStatus(source.status);
     if (Object.hasOwn(source, "teamId")) patch.teamId = normalizeTeamId(source.teamId);
     if (Object.hasOwn(source, "phone")) patch.phone = normalizePhone(source.phone);
-    const passwordHash = Object.hasOwn(source, "password")
-      ? await bcrypt.hash(validatePassword(source.password, this.passwordMinLength), this.bcryptRounds)
-      : null;
-    if (Object.keys(patch).length === 0 && !passwordHash) {
+    if (Object.keys(patch).length === 0) {
       throw new UserManagementError(400, "VALIDATION_ERROR", "No user changes were provided.");
     }
 
@@ -223,7 +241,6 @@ export class UserManagementService {
       if (current.teamId && (leavesCurrentTeam || becomesInactive)) {
         await repository.reassignLeaderWhenMemberLeaves(current.teamId, id);
       }
-      if (passwordHash) await repository.resetPassword(id, passwordHash);
       const updated = mapUser(await repository.findById(id));
       await advanceSnapshot(repository);
       return updated;
@@ -232,18 +249,5 @@ export class UserManagementService {
 
   async deactivateUser(id, actor) {
     return this.updateUser(id, { status: "Inactive" }, actor);
-  }
-
-  async resetPassword(id, password) {
-    validatePassword(password, this.passwordMinLength);
-    const passwordHash = await bcrypt.hash(password, this.bcryptRounds);
-    return this.withTransaction(async (repository) => {
-      if (!(await repository.findById(id))) {
-        throw new UserManagementError(404, "USER_NOT_FOUND", "User not found.");
-      }
-      await repository.resetPassword(id, passwordHash);
-      await advanceSnapshot(repository);
-      return { reset: true };
-    });
   }
 }

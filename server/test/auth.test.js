@@ -13,10 +13,10 @@ let server;
 let origin;
 
 const users = [
-  { id: "auth-admin", username: "admin", name: "Admin User", role: "central_admin", status: "Active" },
-  { id: "auth-manager", username: "manager", name: "Manager User", role: "warehouse_manager", status: "Active" },
-  { id: "auth-worker", username: "worker", name: "Worker User", role: "field_worker", status: "Active" },
-  { id: "auth-inactive", username: "inactive", name: "Inactive User", role: "field_worker", status: "Inactive" },
+  { id: "auth-admin", username: "admin", name: "Admin User", email: "admin@reliefopt.org", role: "central_admin", status: "Active" },
+  { id: "auth-manager", username: "manager", name: "Manager User", email: "manager@reliefopt.org", role: "warehouse_manager", status: "Active" },
+  { id: "auth-worker", username: "worker", name: "Worker User", email: "worker@reliefopt.org", role: "field_worker", status: "Active" },
+  { id: "auth-inactive", username: "inactive", name: "Inactive User", email: "inactive@reliefopt.org", role: "field_worker", status: "Inactive" },
 ];
 
 async function request(path, options = {}) {
@@ -39,9 +39,9 @@ before(async () => {
   const passwordHash = await bcrypt.hash(PASSWORD, TEST_CONFIG.bcryptRounds);
   for (const user of users) {
     await pool.query(
-      `INSERT INTO users (id, username, password_hash, name, role, status)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [user.id, user.username, passwordHash, user.name, user.role, user.status],
+      `INSERT INTO users (id, username, password_hash, name, email, role, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [user.id, user.username, passwordHash, user.name, user.email, user.role, user.status],
     );
   }
 
@@ -121,6 +121,7 @@ test("authenticated identity is resolved from the database", async () => {
     role: "field_worker",
     status: "Active",
     teamId: null,
+    email: "worker@reliefopt.org",
   });
 });
 
@@ -139,4 +140,139 @@ test("server-side authorization enforces the role matrix", async () => {
   assert.equal((await authenticatedGet("/api/warehouse/ping", "central_admin")).status, 200);
   assert.equal((await authenticatedGet("/api/warehouse/ping", "warehouse_manager")).status, 200);
   assert.equal((await authenticatedGet("/api/warehouse/ping", "field_worker")).status, 403);
+});
+
+test("public registration creates an unassigned field worker who can immediately authenticate", async () => {
+  const response = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: "New Registrant",
+      email: "new.registrant@example.com",
+      username: "new.registrant",
+      phone: "+8801700000001",
+      password: "a sufficiently long password",
+      confirmPassword: "a sufficiently long password",
+    }),
+  });
+  assert.equal(response.status, 201);
+  const session = await response.json();
+  assert.equal(session.user.role, "field_worker");
+  assert.equal(session.user.teamId, null);
+  assert.equal(session.user.email, "new.registrant@example.com");
+  assert.equal(session.user.password, undefined);
+  assert.match(session.accessToken, /^[^.]+\.[^.]+\.[^.]+$/);
+
+  const loginResponse = await login("new.registrant", "a sufficiently long password");
+  assert.equal(loginResponse.status, 200);
+  assert.equal((await loginResponse.json()).user.id, session.user.id);
+});
+
+test("registration rejects mismatched confirmation, weak passwords, and duplicate identifiers", async () => {
+  const base = {
+    name: "Duplicate Test",
+    email: "duplicate.test@example.com",
+    username: "duplicate.test",
+    password: "a sufficiently long password",
+  };
+  const mismatched = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...base, confirmPassword: "does not match" }),
+  });
+  assert.equal(mismatched.status, 400);
+  assert.equal((await mismatched.json()).code, "PASSWORD_MISMATCH");
+
+  const weak = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...base, password: "short", confirmPassword: "short" }),
+  });
+  assert.equal(weak.status, 400);
+  assert.equal((await weak.json()).code, "WEAK_PASSWORD");
+
+  const badEmail = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...base, email: "not-an-email", confirmPassword: base.password }),
+  });
+  assert.equal(badEmail.status, 400);
+  assert.equal((await badEmail.json()).code, "VALIDATION_ERROR");
+
+  const created = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...base, confirmPassword: base.password }),
+  });
+  assert.equal(created.status, 201);
+
+  const duplicateUsername = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...base, email: "another.email@example.com", confirmPassword: base.password }),
+  });
+  assert.equal(duplicateUsername.status, 409);
+  assert.equal((await duplicateUsername.json()).code, "USERNAME_TAKEN");
+
+  const duplicateEmail = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...base, username: "another.username", confirmPassword: base.password }),
+  });
+  assert.equal(duplicateEmail.status, 409);
+  assert.equal((await duplicateEmail.json()).code, "EMAIL_TAKEN");
+});
+
+test("self-service account updates require the current password and can change email and password", async () => {
+  const session = await (await login("manager")).json();
+  const token = session.accessToken;
+
+  const wrongCurrent = await request("/api/auth/me", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ email: "manager.new@example.com", currentPassword: "wrong password" }),
+  });
+  assert.equal(wrongCurrent.status, 401);
+  assert.equal((await wrongCurrent.json()).code, "INVALID_CURRENT_PASSWORD");
+
+  const emailChange = await request("/api/auth/me", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ email: "manager.new@example.com", currentPassword: PASSWORD }),
+  });
+  assert.equal(emailChange.status, 200);
+  const emailChangeBody = await emailChange.json();
+  assert.equal(emailChangeBody.user.email, "manager.new@example.com");
+  assert.equal(emailChangeBody.passwordChanged, false);
+
+  const stillValid = await request("/api/auth/me", { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(stillValid.status, 200);
+
+  const mismatchedNewPassword = await request("/api/auth/me", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      currentPassword: PASSWORD,
+      newPassword: "a brand new password",
+      confirmNewPassword: "does not match",
+    }),
+  });
+  assert.equal(mismatchedNewPassword.status, 400);
+  assert.equal((await mismatchedNewPassword.json()).code, "PASSWORD_MISMATCH");
+
+  const passwordChange = await request("/api/auth/me", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      currentPassword: PASSWORD,
+      newPassword: "a brand new password",
+      confirmNewPassword: "a brand new password",
+    }),
+  });
+  assert.equal(passwordChange.status, 200);
+  assert.equal((await passwordChange.json()).passwordChanged, true);
+
+  assert.equal((await request("/api/auth/me", { headers: { authorization: `Bearer ${token}` } })).status, 401);
+  assert.equal((await login("manager", PASSWORD)).status, 401);
+  assert.equal((await login("manager", "a brand new password")).status, 200);
 });

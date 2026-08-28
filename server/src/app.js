@@ -25,19 +25,21 @@ export function createApp({ db, config, version = "0.1.0", logger = console }) {
     audience: config.jwtAudience,
     expiresInSeconds: config.jwtExpiresInSeconds,
   });
-  const authService = new AuthService({
-    userRepository,
-    jwtService,
-    bcryptRounds: config.bcryptRounds,
-  });
-  const requireAuth = createRequireAuth({ jwtService, userRepository });
-  const requireAdmin = allowRoles("central_admin");
-  const requireWarehouseManage = allowRoles("central_admin", "warehouse_manager");
   const userManagementService = new UserManagementService({
     db,
     bcryptRounds: config.bcryptRounds,
     passwordMinLength: config.passwordMinLength,
   });
+  const authService = new AuthService({
+    userRepository,
+    userManagementService,
+    jwtService,
+    bcryptRounds: config.bcryptRounds,
+    passwordMinLength: config.passwordMinLength,
+  });
+  const requireAuth = createRequireAuth({ jwtService, userRepository });
+  const requireAdmin = allowRoles("central_admin");
+  const requireWarehouseManage = allowRoles("central_admin", "warehouse_manager");
   const warehouseManagementService = new WarehouseManagementService({ db });
   const syncService = new SyncService(db);
 

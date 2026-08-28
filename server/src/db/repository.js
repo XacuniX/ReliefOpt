@@ -11,7 +11,7 @@ export class UserAuthRepository {
 
   async findByUsername(username) {
     const result = await this.db.query(
-      `SELECT id, username, password_hash, name, role, status, team_id, auth_version
+      `SELECT id, username, password_hash, name, email, role, status, team_id, auth_version
        FROM users
        WHERE LOWER(username) = LOWER($1)`,
       [username],
@@ -21,7 +21,7 @@ export class UserAuthRepository {
 
   async findById(id) {
     const result = await this.db.query(
-      `SELECT id, username, name, role, status, team_id, auth_version
+      `SELECT id, username, password_hash, name, email, role, status, team_id, auth_version
        FROM users
        WHERE id = $1`,
       [id],
@@ -38,6 +38,28 @@ export class UserAuthRepository {
       [id],
     );
     return result.rows[0]?.last_login ?? null;
+  }
+
+  async updateEmail(id, email) {
+    const result = await this.db.query(
+      `UPDATE users
+       SET email = $2, updated_at = NOW()
+       WHERE id = $1
+       RETURNING id`,
+      [id, email],
+    );
+    return result.rowCount === 1;
+  }
+
+  async updatePassword(id, passwordHash) {
+    const result = await this.db.query(
+      `UPDATE users
+       SET password_hash = $2, auth_version = auth_version + 1, updated_at = NOW()
+       WHERE id = $1
+       RETURNING id`,
+      [id, passwordHash],
+    );
+    return result.rowCount === 1;
   }
 }
 

@@ -34,9 +34,9 @@ before(async () => {
     ('team-standby', 'Standby Response Team', 4, 'Standby'),
     ('team-offline', 'Offline Response Team', 3, 'Offline')`);
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [actor.id, "assignment.admin", "not-used-by-service-tests", actor.name, "central_admin", "Active"],
+    `INSERT INTO users (id, username, password_hash, name, email, role, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [actor.id, "assignment.admin", "not-used-by-service-tests", actor.name, "assignment.admin@reliefopt.org", "central_admin", "Active"],
   );
   service = new SyncService(pool);
 });

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { AuthApiError, fetchCurrentUser, loginWithPassword } from "../lib/authApi";
+import { AuthApiError, fetchCurrentUser, loginWithPassword, registerAccount, updateOwnAccount } from "../lib/authApi";
 import {
   clearCachedSession,
   readCachedSession,
@@ -112,6 +112,24 @@ function AuthProvider({ children }) {
     return response.user;
   }
 
+  async function register(payload) {
+    if (navigator.onLine === false) throw new OfflineLoginError();
+    const response = await registerAccount(payload);
+    const session = writeCachedSession(response.accessToken);
+    acceptSession(session, response.user);
+    return response.user;
+  }
+
+  async function updateAccount(payload) {
+    const response = await updateOwnAccount(accessToken, payload);
+    if (response.passwordChanged) {
+      logout();
+      return response.user;
+    }
+    setCurrentUser(response.user);
+    return response.user;
+  }
+
   async function refreshCurrentUser() {
     if (!accessToken) return null;
     try {
@@ -130,7 +148,10 @@ function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ currentUser, accessToken, isAuthenticated, authReady, login, logout, refreshCurrentUser }}
+      value={{
+        currentUser, accessToken, isAuthenticated, authReady,
+        login, register, updateAccount, logout, refreshCurrentUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

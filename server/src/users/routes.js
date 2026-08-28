@@ -23,11 +23,6 @@ export function createUserRouter({ service, requireAuth, requireAdmin }) {
     response.json({ users: await service.listUsers() });
   }));
 
-  router.post("/", route(async (request, response) => {
-    const user = await service.createUser(request.body);
-    response.status(201).json({ user });
-  }));
-
   router.patch("/:id", route(async (request, response) => {
     const user = await service.updateUser(request.params.id, request.body, request.auth.user);
     response.json({ user });
@@ -36,10 +31,6 @@ export function createUserRouter({ service, requireAuth, requireAdmin }) {
   router.post("/:id/deactivate", route(async (request, response) => {
     const user = await service.deactivateUser(request.params.id, request.auth.user);
     response.json({ user });
-  }));
-
-  router.post("/:id/reset-password", route(async (request, response) => {
-    response.json(await service.resetPassword(request.params.id, request.body?.password));
   }));
 
   return router;

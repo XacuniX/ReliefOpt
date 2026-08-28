@@ -9,16 +9,16 @@ export const demoTeams = [
 ];
 
 export const demoUsers = [
-  { id: "u1", username: "rahim", name: "Rahim Uddin", role: "central_admin", status: "Active", teamId: "t6", phone: "+880-1711-234567" },
-  { id: "u2", username: "fatima", name: "Fatima Begum", role: "warehouse_manager", status: "Active", teamId: "t7", phone: "+880-1812-345678" },
-  { id: "u3", username: "kamal", name: "Kamal Hossain", role: "field_worker", status: "Active", teamId: "t1", phone: "+880-1913-456789" },
-  { id: "u4", username: "nasrin", name: "Nasrin Akter", role: "field_worker", status: "Active", teamId: "t2", phone: "+880-1614-567890" },
-  { id: "u5", username: "mizanur", name: "Mizanur Rahman", role: "warehouse_manager", status: "Inactive", teamId: "t7", phone: "+880-1515-678901" },
-  { id: "u6", username: "taslima", name: "Taslima Khatun", role: "field_worker", status: "Active", teamId: "t3", phone: "+880-1716-789012" },
-  { id: "u7", username: "jahangir", name: "Jahangir Alam", role: "field_worker", status: "Offline", teamId: "t4", phone: "+880-1817-890123" },
-  { id: "u8", username: "sharmin", name: "Sharmin Sultana", role: "central_admin", status: "Active", teamId: "t6", phone: "+880-1918-901234" },
-  { id: "u9", username: "abdul", name: "Abdul Kader", role: "field_worker", status: "Active", teamId: "t5", phone: "+880-1619-012345" },
-  { id: "u10", username: "roksana", name: "Roksana Parvin", role: "warehouse_manager", status: "Active", teamId: "t7", phone: "+880-1510-123456" },
+  { id: "u1", username: "rahim", name: "Rahim Uddin", email: "rahim.uddin@reliefopt.org", role: "central_admin", status: "Active", teamId: "t6", phone: "+880-1711-234567" },
+  { id: "u2", username: "fatima", name: "Fatima Begum", email: "fatima.begum@reliefopt.org", role: "warehouse_manager", status: "Active", teamId: "t7", phone: "+880-1812-345678" },
+  { id: "u3", username: "kamal", name: "Kamal Hossain", email: "kamal.hossain@reliefopt.org", role: "field_worker", status: "Active", teamId: "t1", phone: "+880-1913-456789" },
+  { id: "u4", username: "nasrin", name: "Nasrin Akter", email: "nasrin.akter@reliefopt.org", role: "field_worker", status: "Active", teamId: "t2", phone: "+880-1614-567890" },
+  { id: "u5", username: "mizanur", name: "Mizanur Rahman", email: "mizanur.rahman@reliefopt.org", role: "warehouse_manager", status: "Inactive", teamId: "t7", phone: "+880-1515-678901" },
+  { id: "u6", username: "taslima", name: "Taslima Khatun", email: "taslima.khatun@reliefopt.org", role: "field_worker", status: "Active", teamId: "t3", phone: "+880-1716-789012" },
+  { id: "u7", username: "jahangir", name: "Jahangir Alam", email: "jahangir.alam@reliefopt.org", role: "field_worker", status: "Offline", teamId: "t4", phone: "+880-1817-890123" },
+  { id: "u8", username: "sharmin", name: "Sharmin Sultana", email: "sharmin.sultana@reliefopt.org", role: "central_admin", status: "Active", teamId: "t6", phone: "+880-1918-901234" },
+  { id: "u9", username: "abdul", name: "Abdul Kader", email: "abdul.kader@reliefopt.org", role: "field_worker", status: "Active", teamId: "t5", phone: "+880-1619-012345" },
+  { id: "u10", username: "roksana", name: "Roksana Parvin", email: "roksana.parvin@reliefopt.org", role: "warehouse_manager", status: "Active", teamId: "t7", phone: "+880-1510-123456" },
 ];
 
 export const demoWarehouses = [

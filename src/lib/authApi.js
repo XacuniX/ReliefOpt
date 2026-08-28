@@ -52,3 +52,18 @@ export function fetchCurrentUser(accessToken) {
     headers: { authorization: `Bearer ${accessToken}` },
   });
 }
+
+export function registerAccount(payload) {
+  return apiRequest("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateOwnAccount(accessToken, payload) {
+  return apiRequest("/api/auth/me", {
+    method: "PATCH",
+    headers: { authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+}

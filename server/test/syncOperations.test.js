@@ -13,8 +13,8 @@ before(async () => {
   pool = new (database.adapters.createPg().Pool)();
   await runMigrations({ db: pool });
   await pool.query(
-    `INSERT INTO users (id, username, password_hash, name, role, status)
-     VALUES ($1, 'sync.operations', 'unused', $2, 'central_admin', 'Active')`,
+    `INSERT INTO users (id, username, password_hash, name, email, role, status)
+     VALUES ($1, 'sync.operations', 'unused', $2, 'sync.operations@reliefopt.org', 'central_admin', 'Active')`,
     [actor.id, actor.name],
   );
   await pool.query(

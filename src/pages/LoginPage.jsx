@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { LoginForm, SmokeyBackground } from "../components/ui/login-form";
+import { LoginForm, RegisterForm, SmokeyBackground } from "../components/ui/login-form";
 
 const DEMO_PASSWORD = "ReliefOpt!123";
 const DEMO_ACCOUNTS = [
@@ -11,13 +11,27 @@ const DEMO_ACCOUNTS = [
   { label: "Field Worker", username: "kamal", description: "Field reporting and tasks" },
 ];
 
+const REGISTRATION_ERROR_MESSAGES = {
+  USERNAME_TAKEN: "That username is already in use.",
+  EMAIL_TAKEN: "That email is already in use.",
+  WEAK_PASSWORD: "Password must contain at least 12 characters.",
+  PASSWORD_MISMATCH: "Password confirmation does not match.",
+  VALIDATION_ERROR: "Check your details and try again.",
+};
+
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const [mode, setMode] = useState("login");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function switchMode(nextMode) {
+    setMode(nextMode);
+    setError("");
+  }
 
   async function handleSubmit({ username, password }) {
     if (!username.trim() || !password.trim()) {
@@ -42,6 +56,25 @@ export default function LoginPage() {
     }
   }
 
+  async function handleRegister(payload) {
+    setLoading(true);
+    setError("");
+    try {
+      const user = await register(payload);
+      navigate(user.role === "field_worker" ? "/map" : "/dashboard");
+    } catch (registerError) {
+      if (registerError?.code === "OFFLINE_LOGIN_UNAVAILABLE") {
+        setError("You are offline. Registration requires Central Command connectivity.");
+      } else if (registerError?.code === "NETWORK_UNAVAILABLE") {
+        setError("Central Command is unreachable. Check the server and your connection.");
+      } else {
+        setError(REGISTRATION_ERROR_MESSAGES[registerError?.code] || "Unable to create your account.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function handleDemoLogin(username) {
     if (loading) return;
     void handleSubmit({ username, password: DEMO_PASSWORD });
@@ -54,8 +87,22 @@ export default function LoginPage() {
       <SmokeyBackground color="#0d9488" />
       <div aria-hidden className={`absolute inset-0 ${isDark ? "bg-[#031a17]/80" : "bg-white/60"}`} />
       <div className="relative z-10 w-full flex flex-col items-center">
-        <LoginForm onSubmit={handleSubmit} error={error} loading={loading} />
-        {import.meta.env.DEV && (
+        {mode === "login" ? (
+          <LoginForm
+            onSubmit={handleSubmit}
+            error={error}
+            loading={loading}
+            onSwitchToRegister={() => switchMode("register")}
+          />
+        ) : (
+          <RegisterForm
+            onSubmit={handleRegister}
+            error={error}
+            loading={loading}
+            onSwitchToLogin={() => switchMode("login")}
+          />
+        )}
+        {mode === "login" && import.meta.env.DEV && (
           <section className="mt-4 w-full max-w-sm rounded-2xl border border-amber-500/25 bg-white/80 p-4 text-slate-700 shadow-lg shadow-teal-900/5 backdrop-blur-lg dark:bg-white/10 dark:text-gray-200 dark:shadow-black/30" aria-labelledby="developer-portal-title">
             <div className="mb-3 text-center">
               <h2 id="developer-portal-title" className="text-sm font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
