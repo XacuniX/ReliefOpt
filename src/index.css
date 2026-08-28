@@ -98,6 +98,47 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Main window scrollbar — neutral in light mode, ReliefOpt teal in dark mode. */
+.app-scrollbar {
+  scrollbar-color: #94a3b8 #eef2f7;
+  scrollbar-width: thin;
+}
+
+.app-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.app-scrollbar::-webkit-scrollbar-track {
+  background: #eef2f7;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border: 2px solid #eef2f7;
+  border-radius: 9999px;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.dark .app-scrollbar {
+  scrollbar-color: var(--primary) #071311;
+}
+
+.dark .app-scrollbar::-webkit-scrollbar-track {
+  background: #071311;
+}
+
+.dark .app-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-color: #071311;
+}
+
+.dark .app-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #2dd4bf;
+}
+
 :root {
   --app-safe-area-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   --app-safe-area-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));

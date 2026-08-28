@@ -186,7 +186,7 @@ export function AppShell({ children }) {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        <main className="app-scrollbar flex-1 overflow-y-auto overflow-x-hidden">
           <div className="p-3 sm:p-6">
             {children ?? <Outlet />}
           </div>

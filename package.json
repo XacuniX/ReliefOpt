@@ -26,7 +26,7 @@
     "android:download-model": "node scripts/download-android-whisper-model.mjs",
     "android:sync-assets": "node scripts/sync-android-assets.mjs",
     "android:sync": "npm run build:android && npx cap sync android && npm run android:sync-assets",
-    "android:build": "npm run android:sync && cd android && gradlew.bat assembleDebug"
+    "android:build": "npm run android:sync && cd android && .\\gradlew.bat assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

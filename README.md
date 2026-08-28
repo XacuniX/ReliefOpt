@@ -1,6 +1,6 @@
 # ReliefOpt
 
-ReliefOpt is a disaster-relief coordination application for Bangladesh. It combines incident reporting, approvals, mapping, task assignment, inventory, role-based access, offline snapshots, and English voice-to-text reporting in a React web app and an Android package.
+ReliefOpt is a disaster-relief coordination application for Bangladesh. It combines incident reporting, approvals, mapping, task assignment, inventory, role-based access, offline snapshots, and English voice-to-text reporting in a React web app and a Capacitor Android package. Users can authenticate with a local username/password account or, on the web, with Google Identity Services (GIS).
 
 The detailed functional and non-functional requirements are in [SRS.md](SRS.md).
 
@@ -9,6 +9,7 @@ The detailed functional and non-functional requirements are in [SRS.md](SRS.md).
 - Node.js 20 or newer (Node.js 22 is recommended and used by CI)
 - npm
 - PostgreSQL 14 or newer for persistent development and production
+- A Google Cloud OAuth 2.0 web client ID for Google Sign-In
 - Chromium for Playwright end-to-end tests
 - Android builds: JDK 21, Android Studio or an Android SDK, and internet access for the one-time Whisper model download
 
@@ -31,18 +32,17 @@ The demo server uses an in-memory database and resets whenever it stops.
 
 Terminal 1:
 
-```$env:E2E_HOST="0.0.0.0"    
-$env:E2E_CLIENT_ORIGINS="https://localhost,http://192.168.110.225:5173"
+```powershell
 npm.cmd --prefix server run e2e
 ```
 
 Terminal 2:
 
-```
+```powershell
 npm run dev -- --host 127.0.0.1
 ```
 
-Open `http://127.0.0.1:5173` and sign in with any active demo username below. The demo password is `ReliefOpt!123`.
+Open `http://127.0.0.1:5173` and enter any active demo username below with the password `ReliefOpt!123`. The former development-account portal has been removed from the login page. This in-memory server is intended for password-based demos; use the persistent API configuration below to exercise Google Sign-In.
 
 | Role | Active usernames |
 | --- | --- |
@@ -61,23 +61,37 @@ Open `http://127.0.0.1:5173` and sign in with any active demo username below. Th
    - Password: `reliefopt`
    - Host and port: `127.0.0.1:5432`
 
-2. Create the environment files:
+2. Create the API environment file:
 
 ```powershell
-Copy-Item .env.example .env
 Copy-Item server/.env.example server/.env
 ```
 
-3. Review `server/.env`. At minimum, set a valid `DATABASE_URL`, replace `JWT_SECRET` with a private random value of at least 32 characters, and keep `DEMO_PASSWORD` at least as long as `PASSWORD_MIN_LENGTH`.
+3. Review `server/.env`. At minimum:
 
-4. Apply the schema and seed the demo records:
+   - Set a valid `DATABASE_URL`.
+   - Replace `JWT_SECRET` with a private random value of at least 32 characters.
+   - Set `GOOGLE_CLIENT_ID` to a Google OAuth 2.0 **web** client ID.
+   - Keep `DEMO_PASSWORD` at least as long as `PASSWORD_MIN_LENGTH` if you seed demo users.
+
+4. Create a root `.env` for the browser build and set at least:
+
+```dotenv
+VITE_API_URL=http://127.0.0.1:4000
+VITE_AUTH_TIMEOUT_MS=8000
+VITE_GOOGLE_CLIENT_ID=<same-web-client-id>.apps.googleusercontent.com
+```
+
+5. Apply all PostgreSQL migrations and optionally seed the demo records:
 
 ```powershell
 npm run server:migrate
 npm run server:seed:demo
 ```
 
-5. Start the API and client in separate terminals:
+Migration `007_user_oauth.sql` adds `google_id`, `avatar_url`, and `auth_provider` and permits a null `password_hash` for Google-only accounts. The migration runner only requires the database settings, so `npm run server:migrate` can run before the JWT and Google settings are complete.
+
+6. Start the API and client in separate terminals:
 
 ```powershell
 npm run server:dev
@@ -99,9 +113,20 @@ The root `.env` controls the browser client:
 | `VITE_AUTH_TIMEOUT_MS` | Authentication request timeout | `8000` |
 | `VITE_GOOGLE_CLIENT_ID` | Google web OAuth client ID used by the GIS button | `<client-id>.apps.googleusercontent.com` |
 
-Set `GOOGLE_CLIENT_ID` on the API to the same Google web OAuth client ID. For local development, Vite also accepts `GOOGLE_CLIENT_ID` as a fallback when `VITE_GOOGLE_CLIENT_ID` is absent. Add `http://127.0.0.1:5173` and/or `http://localhost:5173` to that OAuth client's authorized JavaScript origins in Google Cloud Console.
+Set `GOOGLE_CLIENT_ID` on the API to the same Google web OAuth client ID. For local development, Vite also accepts `GOOGLE_CLIENT_ID` as a fallback when `VITE_GOOGLE_CLIENT_ID` is absent. Add the exact development origins you use, such as `http://127.0.0.1:5173` and `http://localhost:5173`, to that OAuth client's authorized JavaScript origins in Google Cloud Console.
 
-`server/.env.example` documents all API settings, including database TLS, connection-pool limits, allowed client origins, JWT and Google settings, password rules, and login rate limits. Never commit `server/.env` or the root `.env`.
+The API loads `server/.env` first and then uses the root `.env` only as a fallback for unset values. `server/.env.example` documents all API settings, including database TLS, connection-pool limits, allowed client origins, JWT and Google settings, password rules, and login rate limits. Never commit `server/.env` or the root `.env`.
+
+## Authentication
+
+ReliefOpt supports two authentication paths:
+
+- **Local:** `POST /api/auth/login` verifies a username/password pair against a bcrypt hash. Public registration at `POST /api/auth/register` creates an active, unassigned `field_worker`.
+- **Google GIS:** the official Google button on both web auth forms returns an ID-token credential. The client sends `{ "credential": "<Google ID token>" }` to `POST /api/auth/google`; the API verifies its signature and audience with `google-auth-library` and `GOOGLE_CLIENT_ID`.
+
+For Google authentication, the server first resolves `google_id`. If it has not seen that Google account, it links an existing ReliefOpt user with the same normalized email or creates a passwordless, active, unassigned `field_worker`. Linked local users retain their password. Both paths issue the same ReliefOpt JWT, so protected APIs and role routing are unchanged. A Google client secret and Google refresh token are not used because this flow authenticates identity only; it does not request background access to Google APIs.
+
+Fresh local or Google authentication requires Central Command connectivity. An existing, unexpired ReliefOpt JWT can continue an offline session. GIS is hidden in the Capacitor Android WebView because the current Google web flow does not support that native container; the Android build currently uses username/password authentication.
 
 ## Build and preview the web app
 
@@ -177,6 +202,14 @@ The workflow builds the web client, regenerates the Capacitor Android assets, co
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
+To put a convenient copy at the repository root after a build:
+
+```powershell
+Copy-Item android/app/build/outputs/apk/debug/app-debug.apk ReliefOpt-debug.apk -Force
+```
+
+APK files are ignored by Git. The root copy is a local release artifact, while the Gradle output above is the canonical build location.
+
 On macOS or Linux, synchronize first and invoke the Unix Gradle wrapper:
 
 ```bash
@@ -245,13 +278,17 @@ scripts/       Android model download and asset synchronization
 server/        Express API, PostgreSQL migrations, seed data, and tests
 src/           React application
 test/          Client and shared-library tests
+README.md      Setup, operation, validation, and build guide
 SRS.md         Software requirements specification
 ```
 
 ## Troubleshooting
 
 - **Client cannot reach the API:** verify `VITE_API_URL`, start the API, and include the client origin in `CLIENT_ORIGINS` or `E2E_CLIENT_ORIGINS`.
+- **API says `DATABASE_URL`, `JWT_SECRET`, or `GOOGLE_CLIENT_ID` is required:** create `server/.env` from `server/.env.example`. Migrations require only the database configuration; running the API requires all three settings.
 - **PostgreSQL readiness fails:** verify that PostgreSQL is running, the database exists, credentials are correct, and migrations have completed.
+- **Google button is missing:** set `VITE_GOOGLE_CLIENT_ID`, restart Vite so it rebuilds its environment, and test in a web browser. The button is intentionally absent in the Android app.
+- **Google verification fails:** make sure the frontend and API use the same web client ID, the exact browser origin is authorized in Google Cloud Console, and the credential is being sent to the persistent API's `POST /api/auth/google` endpoint.
 - **Microphone is unavailable:** use localhost or HTTPS, grant browser and OS permission, close other apps holding the device, and select the intended microphone.
 - **Whisper fails to load in a browser:** check the connection and browser storage, then reload. The model is cached after its first successful download.
 - **Android model is missing:** run `npm run android:download-model` before `npm run android:build`.

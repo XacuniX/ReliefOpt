@@ -6,15 +6,16 @@
 |---|---|
 | **Document** | Software Requirements Specification (SRS) |
 | **Project** | ReliefOpt |
-| **Version** | 2.3 |
-| **Date** | 2026-08-25 |
+| **Version** | 2.4 |
+| **Date** | 2026-08-28 |
 | **Status** | Implemented baseline with separately tracked validation gaps |
 | **Standard** | IEEE 830 / ISO/IEC/IEEE 29148 |
-| **Platform** | Client-server Progressive Web App (PWA), offline-first |
+| **Platform** | Client-server Progressive Web App (PWA) and Capacitor Android app, offline-first |
 
 > **Conformance note on markers.** This SRS specifies the **target architecture**
-> for ReliefOpt: a browser PWA client backed by a **Central Command server** that
-> is the single source of truth. Statements are qualified by:
+> for ReliefOpt: a React client delivered as a browser PWA and Capacitor Android
+> app, backed by a **Central Command server** that is the single source of truth.
+> Statements are qualified by:
 >
 > - `[IMPLEMENTED]` — verified present in current source.
 > - `[INFERRED]` — intent read from code without an explicit specification.
@@ -46,14 +47,16 @@ built.
 
 ### 1.2 Scope
 
-ReliefOpt is a **client-server Progressive Web App**. A browser PWA client
-communicates with a **Central Command backend server** that is the single source
-of truth (SSoT). Each client device maintains a local IndexedDB cache of the
-authoritative snapshot plus a local outbox of pending proposals.
+ReliefOpt is a **client-server application** delivered as a browser PWA and a
+Capacitor Android package. The React client communicates with a **Central Command
+backend server** that is the single source of truth (SSoT). Each client device
+maintains a local IndexedDB cache of the authoritative snapshot plus a local
+outbox of pending proposals.
 
 **What the system does:**
 
-- Role-based authentication with three roles, handled by the backend.
+- Backend-managed role-based authentication with three roles, using either local
+  username/password credentials or Google GIS ID-token exchange on the web.
 - Role-gated navigation and feature access, enforced on the client and validated
   on the backend.
 - An operations dashboard with KPIs, alerts, and analytics charts.
@@ -84,6 +87,10 @@ authoritative snapshot plus a local outbox of pending proposals.
   transliteration, a speech-language selector, or browser-native speech
   recognition. Voice transcription is English-only and model-based.
 - It does not enforce TypeScript-level type safety (plain JavaScript is used).
+- It does not provide Google Sign-In inside the current Capacitor Android WebView;
+  Android users authenticate with username and password.
+- It does not request Google API scopes, store Google access/refresh tokens, or
+  perform background access to Google services.
 
 ### 1.3 Definitions, Acronyms, and Abbreviations
 
@@ -108,6 +115,10 @@ authoritative snapshot plus a local outbox of pending proposals.
 | **Outbox** | The device-local queue of pending proposals that are never shared peer-to-peer |
 | **SSoT** | Single Source of Truth — Central Command's PostgreSQL-backed authoritative state |
 | **JWT** | JSON Web Token — the signed access token issued by Central Command on login |
+| **GIS** | Google Identity Services — the browser identity library that renders the official Google button and returns an ID-token credential |
+| **OAuth 2.0 / OIDC** | The standards underlying Google Sign-In; ReliefOpt uses the GIS identity-token exchange path and does not request offline Google API access |
+| **Google ID token** | A Google-signed JWT sent by the web client to Central Command as `credential` and verified for the configured client ID |
+| **Google `sub`** | Google's stable, provider-specific user identifier, stored as `users.google_id` |
 | **snapshotSeq** | The monotonically increasing server-assigned sequence number that orders snapshots |
 | **Whisper** | The English-only speech-to-text model (`Xenova/whisper-base.en`) used for local transcription |
 
@@ -122,6 +133,8 @@ The following files are the authoritative sources for the current client code:
 - `src/routes.js` — route constants.
 - `src/App.jsx` — routing and provider composition.
 - `src/main.jsx` — application entry point.
+- `src/lib/googleAuth.js` and `src/lib/authApi.js` — GIS availability and
+  credential handoff to Central Command.
 - `src/context/` — `AuthContext`, `DataContext`, `OfflineContext`, `ThemeContext`.
 - `src/lib/` — `db.js`, `sync.js`, `p2p.js`, `urgency.js`, `packing.js`,
   `speech.js`, `speechAudio.js`, `extract.js`, `districts.js`, `disasters.js`,
@@ -130,7 +143,10 @@ The following files are the authoritative sources for the current client code:
 - `src/components/` and `src/pages/` — UI and route-level components.
 
 The backend (`server/`) is implemented and contains Express routes, PostgreSQL
-migrations, authentication, user administration, synchronization, and tests.
+migrations, local and Google authentication, user administration,
+synchronization, and tests. OAuth persistence is introduced by
+`server/migrations/007_user_oauth.sql`; verification and account resolution are
+implemented under `server/src/auth/` and `server/src/db/repository.js`.
 
 ### 1.5 Overview of Document
 
@@ -172,14 +188,14 @@ The client operates in two modes:
 flowchart TD
     subgraph Server[Central Command Backend]
         API[Express REST API]
-        AuthService[Auth Service - JWT + bcrypt]
+        AuthService[Auth Service - JWT + bcrypt + Google ID tokens]
         Ingestion[Proposal Ingestion]
         Approval[Approval Workflow]
         SnapshotService[Snapshot Service - snapshotSeq]
         DB[(PostgreSQL)]
     end
 
-    subgraph Browser[Browser PWA Client]
+    subgraph Browser[React Client - browser PWA or Capacitor Android]
         subgraph Providers[Providers]
             Theme[ThemeProvider]
             Auth[AuthProvider]
@@ -191,6 +207,7 @@ flowchart TD
             Shell[AppShell + Nav + RoleGate]
             Pages[Pages]
             Components[Feature Components]
+            GoogleAuth[GIS button - web only]
             SyncUI[SyncIndicator / PeerPanel / OfflineQueue]
         end
 
@@ -224,6 +241,9 @@ flowchart TD
     Data --> LS
     ApiClient --> API
     API --> AuthService
+    GoogleAuth -->|credential| ApiClient
+    GoogleAuth -->|ID token| GoogleGIS[Google Identity Services]
+    AuthService -->|verify token audience and signature| GoogleGIS
     API --> Ingestion
     API --> Approval
     API --> SnapshotService
@@ -255,24 +275,29 @@ Three roles are defined in `src/mockData.js` and enforced by `src/components/Rol
 `[IMPLEMENTED]` The role matrix is shared by `src/lib/rbac.js`, route guards,
 navigation visibility, and server-side authorization.
 
-Users authenticate with a **username and password**. In the implemented architecture,
-the backend verifies credentials, checks the account status, and issues a **JWT
-access token** `[IMPLEMENTED]`. The client stores the token locally so a refresh does
-not require re-login, and a cached token keeps the user authenticated during
-offline use. Deactivated (`Inactive`) users are refused login.
+Users authenticate with either a **username and password** or, in a web browser,
+an official **Google Sign-In** button. Central Command verifies local credentials
+with bcrypt or verifies the Google ID token against `GOOGLE_CLIENT_ID`, resolves
+or links the database account, checks status and role, and issues the same
+ReliefOpt **JWT access token** `[IMPLEMENTED]`. The client stores the token locally
+so a refresh does not require re-login, and a cached unexpired token keeps the
+user authenticated during offline use. Deactivated (`Inactive`) users are
+refused login. GIS is not rendered in the Capacitor Android runtime.
 
 ### 2.3 Operating Environment
 
 Client and server environments are defined by their package and configuration files.
 
 - **Client runtime:** Any modern browser (Chrome, Edge, Firefox, Safari) on
-  desktop or mobile.
+  desktop or mobile, plus the Capacitor Android WebView for the packaged app.
 - **Server runtime:** Node.js with Express.
 - **Database:** PostgreSQL.
 - **Node tooling:** Vite 6 for `dev`, `build`, and `preview`.
 - **Client dependencies:** React 19, react-router-dom 7, react-leaflet 5,
   Leaflet 1.9, Recharts 2, `idb` 8, `@huggingface/transformers` 4, Tailwind CSS
-  4, and `vite-plugin-pwa`.
+  4, `@react-oauth/google`, and `vite-plugin-pwa`.
+- **Server authentication dependencies:** `bcryptjs`, `jsonwebtoken`, and
+  `google-auth-library`.
 - **Network:** The client works online and offline. Browser shell loading uses a
   service-worker precache after the first visit. Android loads its shell directly
   from APK assets and does not register a service worker, preventing stale web
@@ -295,7 +320,9 @@ Client and server environments are defined by their package and configuration fi
 - Speech recognition runs locally using only the quantised English Whisper
   model; browser-native speech-recognition services are not used.
 - Peer-to-peer transfers are snapshot-only; proposals are never merged P2P.
-- Authentication uses JWT bearer tokens with bcrypt-hashed passwords.
+- Authentication uses ReliefOpt JWT bearer tokens. Local passwords are
+  bcrypt-hashed; GIS credentials are Google-signed ID tokens verified by the
+  backend. Google-only users have no local password hash.
 
 ### 2.5 Assumptions and Dependencies
 
@@ -305,6 +332,9 @@ Client and server environments are defined by their package and configuration fi
   operation degrades to cached data and P2P snapshot relay.
 - A valid cached JWT keeps the user authenticated offline; fresh offline login is
   not possible.
+- Web Google Sign-In requires network access, a shared Google web client ID in
+  `VITE_GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_ID`, and exact authorized JavaScript
+  origins in Google Cloud Console.
 - First use of speech recognition in a web browser requires internet to download
   the Whisper model; afterwards it is cached for offline use. The Android APK
   includes the model and does not require this first-use download.
@@ -323,38 +353,73 @@ Requirements are numbered `FR-<feature>.<n>` and written as testable
 ### 3.1 Authentication and Session Management
 
 **Source:** `src/context/AuthContext.jsx`, `src/pages/LoginPage.jsx`,
-`src/components/ui/login-form.jsx`, `server/src/auth/*`.
+`src/components/ui/login-form.jsx`, `src/lib/googleAuth.js`,
+`src/lib/authApi.js`, `server/src/auth/*`, `server/src/db/repository.js`, and
+`server/migrations/007_user_oauth.sql`.
 
-**Description:** Username/password authentication handled by Central Command,
-with JWT session persistence, cached-session offline fallback, and role-aware
-post-login routing.
+**Description:** Local username/password authentication and web-only Google GIS
+ID-token exchange handled by Central Command, with one ReliefOpt JWT session
+model, cached-session offline fallback, and role-aware post-login routing.
 
-- **FR-AUTH.1** The system shall accept a username and password for login.
-- **FR-AUTH.2** The Central Command backend shall look up the user by `username`
-  and verify the password against the stored bcrypt hash. `[IMPLEMENTED]`
-- **FR-AUTH.3** On successful login, the backend shall issue a JWT access token
-  carrying the user's identity and role. `[IMPLEMENTED]`
-- **FR-AUTH.4** On failure (unknown username, wrong password, or inactive
-  account), the backend shall reject authentication and the client shall remain
-  on the login page. `[IMPLEMENTED]`
-- **FR-AUTH.5** The system shall refuse login for users whose `status` is
-  `Inactive`. `[IMPLEMENTED — backend enforced]`
-- **FR-AUTH.6** The client shall persist the authenticated session (JWT + user
-  profile) to local storage so a page refresh does not require re-login.
+- **FR-AUTH.1** The system shall accept a username and password for local login.
+- **FR-AUTH.2** Public local registration shall collect profile and local
+  credentials and create an active `field_worker` with no team assignment.
   `[IMPLEMENTED]`
-- **FR-AUTH.7** The client shall provide a `logout` function that clears the
+- **FR-AUTH.3** Central Command shall look up a local user by `username` and
+  verify the password against the stored bcrypt hash. `[IMPLEMENTED]`
+- **FR-AUTH.4** The web login and registration forms shall render the official
+  GIS Google button when `VITE_GOOGLE_CLIENT_ID` is configured. `[IMPLEMENTED]`
+- **FR-AUTH.5** After GIS success, the client shall send the returned ID-token
+  string as `{ credential }` to `POST /api/auth/google`. `[IMPLEMENTED]`
+- **FR-AUTH.6** Central Command shall call `OAuth2Client.verifyIdToken()` with
+  `GOOGLE_CLIENT_ID` as the audience and accept only a payload containing a
+  non-empty `sub`, a valid email, and `email_verified: true`. `[IMPLEMENTED]`
+- **FR-AUTH.7** Central Command shall treat Google `sub`, stored in the nullable
+  unique `users.google_id`, as the provider identity and reuse that account on
+  later Google sign-ins. `[IMPLEMENTED]`
+- **FR-AUTH.8** When a new Google identity has a case-insensitive email match,
+  Central Command shall link that ReliefOpt user by setting `google_id`,
+  `avatar_url`, and `auth_provider = 'google'` without removing an existing local
+  password. `[IMPLEMENTED]`
+- **FR-AUTH.9** When no Google ID or email match exists, Central Command shall
+  create an active, unassigned `field_worker` with a collision-safe username,
+  Google name/email/avatar, `auth_provider = 'google'`, and a null
+  `password_hash`. `[IMPLEMENTED]`
+- **FR-AUTH.10** Repeated Google sign-in shall refresh the stored avatar URL and
+  preserve the existing ReliefOpt role, status, team, and local password.
+  `[IMPLEMENTED]`
+- **FR-AUTH.11** Both authentication methods shall issue the same signed
+  ReliefOpt JWT carrying the user's identity, role, and authentication version.
+  `[IMPLEMENTED]`
+- **FR-AUTH.12** Unknown local credentials, invalid or unverified Google
+  credentials, unavailable roles, and inactive accounts shall be rejected with
+  a non-authenticated response and a user-facing error. `[IMPLEMENTED]`
+- **FR-AUTH.13** Login and Google-token exchange shall share server-side rate
+  limiting. `[IMPLEMENTED]`
+- **FR-AUTH.14** The client shall persist the JWT-derived session to
+  `localStorage` so a page refresh does not require re-login, and shall refresh
+  the full user profile from `/api/auth/me` when online. `[IMPLEMENTED]`
+- **FR-AUTH.15** The client shall provide a `logout` function that clears the
   local session and returns the user to `/login`. `[IMPLEMENTED]`
-- **FR-AUTH.8** The client shall resolve the current user's `id`, `name`, and
-  `role` and expose them through `useAuth()`. `[IMPLEMENTED]`
-- **FR-AUTH.9** The system shall route a `field_worker` to `/map` and all other
-  roles to `/dashboard` after successful login. `[IMPLEMENTED]`
-- **FR-AUTH.10** While offline, the client shall continue the session using a
-  cached, unexpired JWT; fresh offline login shall not be possible. `[IMPLEMENTED]`
-- **FR-AUTH.11** If Central Command deactivates a user while that user is
-  offline, the cached session shall keep working locally, but Central Command
-  shall reject the user's proposals on reconnect. `[IMPLEMENTED]`
-- **FR-AUTH.12** The DemoSwitcher role-bypass (`login(role)` without a password)
-  shall be removed. `[IMPLEMENTED]`
+- **FR-AUTH.16** The client shall expose the active user and authentication
+  operations through `useAuth()`. `[IMPLEMENTED]`
+- **FR-AUTH.17** The system shall route a `field_worker` to `/map` and all other
+  roles to `/dashboard` after either successful authentication path.
+  `[IMPLEMENTED]`
+- **FR-AUTH.18** While offline, the client shall continue an existing session
+  using a cached, unexpired ReliefOpt JWT; fresh local or Google authentication
+  shall not be possible. `[IMPLEMENTED]`
+- **FR-AUTH.19** If Central Command deactivates a user while that user is offline,
+  the cached session may continue locally, but Central Command shall reject that
+  user's protected operations on reconnect. `[IMPLEMENTED]`
+- **FR-AUTH.20** Development-account role bypasses and the login-page development
+  portal shall be absent. `[IMPLEMENTED]`
+- **FR-AUTH.21** GIS shall not render in the Capacitor native runtime. The current
+  Android build shall retain local username/password authentication until a
+  native Google authorization flow is implemented. `[IMPLEMENTED]`
+- **FR-AUTH.22** ReliefOpt shall not store the Google ID token, request Google
+  refresh tokens, or require a Google client secret for this identity-only flow.
+  `[IMPLEMENTED]`
 
 ### 3.2 Role-Based Access Control
 
@@ -615,7 +680,8 @@ visual output and export.
 
 ### 3.11 Users and Teams
 
-**Source:** `src/pages/UsersPage.jsx`, `src/components/users/*`.
+**Source:** `src/pages/UsersPage.jsx`, `src/components/users/*`,
+`server/src/users/*`.
 
 **Description:** User management and expandable team cards.
 
@@ -629,6 +695,9 @@ visual output and export.
   lists. `[IMPLEMENTED]`
 - **FR-USER.5** User and team records shall be linked by IDs (`teamId`,
   `leaderId`, `assignedUserId`) rather than display names. `[PARTIAL]`
+- **FR-USER.6** Server-side user mappings shall expose `email`, nullable
+  `googleId`, nullable `avatarUrl`, and `authProvider` where needed, but shall
+  never expose `passwordHash`. `[IMPLEMENTED]`
 
 ### 3.12 Notifications
 
@@ -781,6 +850,10 @@ visual output and export.
 
 ### 4.1 User Interfaces
 
+- **Authentication:** a shared login/register view with local forms and, in web
+  builds configured for GIS, the official Google button. Errors from canceled,
+  unreachable, invalid, unverified, or unavailable Google accounts are shown in
+  the existing auth error area. The former development portal is absent.
 - **Desktop:** collapsible sidebar navigation with user avatar, role, theme
   toggle, and sign-out.
 - **Mobile:** responsive layouts with an overlay navigation drawer.
@@ -802,9 +875,11 @@ visual output and export.
 
 | Interface | Purpose |
 |---|---|
-| **Central Command API (Express)** | Login, snapshot fetch, proposal submission, approval, user/role management `[IMPLEMENTED]` |
+| **Central Command API (Express)** | Local/Google authentication, snapshot fetch, proposal submission, approval, and user/role management `[IMPLEMENTED]` |
 | **PostgreSQL** | Authoritative data store for Central Command `[IMPLEMENTED]` |
-| **JWT (bcrypt)** | Authentication token issuance and password hashing `[IMPLEMENTED]` |
+| **JWT / bcrypt** | ReliefOpt access-token issuance/verification and local password hashing `[IMPLEMENTED]` |
+| **Google Identity Services / `@react-oauth/google`** | Official web Sign-In button and Google ID-token acquisition `[IMPLEMENTED — web only]` |
+| **`google-auth-library`** | Server-side Google ID-token signature, issuer, expiry, and audience verification `[IMPLEMENTED]` |
 | **IndexedDB** (`idb`) | Client local snapshot cache, outbox, and map-tile cache |
 | **localStorage / sessionStorage** | Session token, theme, and UI-preference persistence |
 | **Leaflet / react-leaflet** | Map rendering |
@@ -817,9 +892,13 @@ visual output and export.
 
 ### 4.4 Communication Interfaces
 
-- **Client → Central Command:** HTTP/JSON REST API (login, get snapshot,
-  submit proposals, approve/reject) `[IMPLEMENTED]`. Authentication via
-  `Authorization: Bearer <JWT>`.
+- **Browser → Google GIS:** browser-mediated sign-in returning an ID-token
+  credential to the web client; exact authorized JavaScript origins and a web
+  OAuth client ID are required.
+- **Client → Central Command:** HTTP/JSON REST API (local login/registration,
+  `POST /api/auth/google`, current-user lookup, snapshot fetch, proposal
+  submission, approve/reject) `[IMPLEMENTED]`. The Google endpoint accepts
+  `{ credential }`; protected endpoints use `Authorization: Bearer <ReliefOpt JWT>`.
 - **Central Command → Client:** polled snapshot responses carrying `snapshotSeq`
   and authoritative state `[IMPLEMENTED]`.
 - **WebRTC `RTCDataChannel`** named `reliefopt` for offline peer snapshot relay.
@@ -889,15 +968,27 @@ merging and resolving server-side conflicts deterministically:
 
 ### 5.3 Security
 
-- Authentication shall be handled by the backend and shall verify username and
-  password against a bcrypt hash. `[IMPLEMENTED]`
+- Authentication shall be handled by the backend. Local authentication shall
+  verify username/password against a bcrypt hash. `[IMPLEMENTED]`
+- Google authentication shall treat the client-supplied credential as untrusted
+  and verify it through `OAuth2Client.verifyIdToken()` with the configured web
+  client ID as audience before using any claims. `[IMPLEMENTED]`
+- Google account resolution shall require a verified email and use Google `sub`,
+  not email alone, as the persistent provider identifier. Email matching is used
+  only for the initial transactional account-linking decision. `[IMPLEMENTED]`
 - The backend shall issue JWTs and validate them on every protected endpoint.
   `[IMPLEMENTED]`
 - Inactive users shall be denied access. `[IMPLEMENTED — backend enforced]`
 - Only an authenticated `central_admin` session shall be able to approve
   proposals or commit authoritative state. `[IMPLEMENTED]`
-- Passwords shall never be stored in plaintext. `[IMPLEMENTED]`
-- The DemoSwitcher role-bypass shall be removed. `[IMPLEMENTED]`
+- Local passwords shall never be stored in plaintext. Google-only users may have
+  a null password hash and shall receive a controlled error from local-password
+  account-update operations. `[IMPLEMENTED]`
+- Google ID tokens, Google access tokens, and Google refresh tokens shall not be
+  persisted by ReliefOpt's identity-only GIS flow. `[IMPLEMENTED]`
+- Login and registration endpoints shall be rate-limited. `[IMPLEMENTED]`
+- Development role bypasses and the login development portal shall remain
+  removed. `[IMPLEMENTED]`
 
 ### 5.4 Usability and Accessibility
 
@@ -940,11 +1031,12 @@ merging and resolving server-side conflicts deterministically:
 
 ### 6.1 Entities and Key Attributes
 
-Derived from `src/mockData.js` and `src/lib/db.js`.
+Derived from `src/mockData.js`, `src/lib/db.js`, the PostgreSQL migrations, and
+the server repositories.
 
 | Entity | Key Fields |
 |---|---|
-| **User** | `id`, `name`, `username`, `role`, `team`, `teamId`, `phone`, `status`, `lastLogin` |
+| **User** | `id`, `name`, `username`, `email`, `role`, `team`, `teamId`, `phone`, `status`, `lastLogin`, `avatarUrl`, `authProvider` |
 | **Team** | `id`, `name`, `leader`, `leaderId`, `memberCount`, `status`, `location`, `locationCoords`, `activeTask`, `activeTaskId` |
 | **Warehouse** | `id`, `name`, `lat`, `lng`, `managerId` |
 | **Report** | `id`, `type`, `district`, `location` (lat/lng), `severity`, `status`, `submittedBy`, `submittedById`, `time`, `description`, `affectedCount`, `urgencyScore`, `urgencyZone`, `urgencyFactors`, `peopleCount`, `daysWithoutFood`, `waterLevelFt`, `distanceFromAidKm`, `childrenPresent`, `elderlyPresent` |
@@ -957,7 +1049,7 @@ Derived from `src/mockData.js` and `src/lib/db.js`.
 | **SyncQueueEntry** | `id`, `actionType`, `payload`, `status`, `timestamp` |
 | **Proposal** | `id` (client-generated, idempotency key), `proposalType`, `payload`, `userId`, `status` (`Pending`/`Accepted`/`Rejected`), `rejectionReason`, `timestamp` |
 | **Snapshot** | `snapshotSeq`, `data`, `generatedAt` |
-| **User (server)** | adds `passwordHash`, `authVersion`, `createdAt`, `updatedAt` |
+| **User (server)** | adds nullable unique `googleId`, nullable `passwordHash`, nullable `avatarUrl`, `authProvider` (default `local`), `authVersion`, `createdAt`, `updatedAt` |
 | **SupplyBox** | name, quantity, dimensions (cm), weight, category |
 | **CargoVehicle** | `id`, `name`, `length`, `width`, `height` |
 | **BoxPlacement** | `boxId`, `name`, `category`, `x`, `y`, `z`, `w`, `h`, `d`, `weight` |
@@ -972,15 +1064,20 @@ Documented in `src/lib/contracts.js`:
 - **SyncQueueEntry** — `{ id, actionType, payload, status, timestamp }`
 - **BoxPlacement** — `{ boxId, name, category, x, y, z, w, h, d }`
 
-The server implements `Proposal` and `Snapshot` shapes; `User.passwordHash`
-never leaves the server.
+The server implements `Proposal` and `Snapshot` shapes. `User.passwordHash` never
+leaves the server. The public session profile adds `avatarUrl` and
+`authProvider`; provider-link metadata such as `googleId` is available only
+through authorized user-management data, not the public auth session.
 
 ### 6.3 Persistence
 
 **Backend (authoritative) `[IMPLEMENTED]`:** PostgreSQL stores the canonical domain
-tables (`users` with hashed passwords, `reports`, `tasks`, `inventory`, `teams`,
-`warehouses`, `notifications`, `stockLog`, `mapPins`), the `proposals` table with
-idempotency keys, and a monotonic `snapshotSeq`.
+tables (`users` with either a bcrypt password hash, a Google identity, or both;
+`reports`; `tasks`; `inventory`; `teams`; `warehouses`; `notifications`;
+`stockLog`; `mapPins`), the `proposals` table with idempotency keys, and a
+monotonic `snapshotSeq`. Seven ordered SQL migrations currently define the
+schema; `007_user_oauth.sql` adds the nullable unique Google ID, avatar URL,
+provider marker, and nullable local password hash.
 
 **Client (cache + outbox) `[IMPLEMENTED]`:** `src/lib/db.js` defines the
 IndexedDB database `reliefopt` (version 2) with stores:
@@ -1007,15 +1104,18 @@ Map tiles are stored separately in `reliefopt-tiles`, keyed by `z/x/y`, with a
 
 **Implemented model:**
 
-1. **Online:** client authenticates with Central Command → receives JWT → reads
-   and writes the authoritative store directly → polls for the latest snapshot.
-2. **Offline transition:** client switches to the local cache + outbox; field
+1. **Online authentication:** the client submits local credentials to Central
+   Command or obtains a Google ID token from GIS and exchanges it with Central
+   Command → Central Command resolves the user → returns a ReliefOpt JWT.
+2. **Online operation:** the client uses that ReliefOpt JWT → reads and writes the
+   authoritative store directly → polls for the latest snapshot.
+3. **Offline transition:** client switches to the local cache + outbox; field
    mutations become proposals.
-3. **Offline P2P:** a device may ingest a newer snapshot from a peer (gated by
+4. **Offline P2P:** a device may ingest a newer snapshot from a peer (gated by
    `snapshotSeq`) but never exchanges proposals.
-4. **Reconnect:** client pulls the latest snapshot, re-bases proposals, then
+5. **Reconnect:** client pulls the latest snapshot, re-bases proposals, then
    pushes them (idempotently) to Central Command.
-5. **Acceptance:** Central Command applies accepted proposals (first-arrived
+6. **Acceptance:** Central Command applies accepted proposals (first-arrived
    wins), advances `snapshotSeq`, and publishes a new snapshot.
 
 On boot, `DataContext` hydrates the cached snapshot and isolated outbox, then
@@ -1033,15 +1133,17 @@ and passed through atomic `snapshotSeq` gating.
 flowchart LR
     subgraph Server[Central Command Backend]
         API[Express REST API]
-        AuthService[Auth Service - JWT + bcrypt]
+        AuthService[Auth Service - JWT + bcrypt + Google ID tokens]
         Ingestion[Proposal Ingestion]
         Approval[Approval Workflow]
         SnapshotService[Snapshot Service - snapshotSeq]
         DB[(PostgreSQL)]
     end
 
-    subgraph Client[Browser PWA Client]
-        Entry[main.jsx] --> ThemeProvider
+    subgraph Client[React Client]
+        Entry[main.jsx] --> GoogleProvider[GoogleOAuthProvider - configured web builds]
+        Entry -.->|native or no client ID| ThemeProvider
+        GoogleProvider --> ThemeProvider
         ThemeProvider --> AuthProvider
         AuthProvider --> App
         App --> BrowserRouter
@@ -1050,6 +1152,7 @@ flowchart LR
         DataProvider --> AuthRoutes
         AuthRoutes --> AppShell
         AuthRoutes --> Pages
+        AuthRoutes --> GoogleButton[Official GIS button - web only]
 
         DataProvider --> apiClient[api.js]
         DataProvider --> db[db.js IndexedDB]
@@ -1072,7 +1175,10 @@ flowchart LR
     end
 
     apiClient -->|"REST + JWT"| API
+    GoogleButton -->|ID token| GoogleGIS[Google Identity Services]
+    GoogleButton -->|credential| apiClient
     API --> AuthService
+    AuthService -->|verifyIdToken audience| GoogleGIS
     API --> Ingestion
     API --> Approval
     API --> SnapshotService
@@ -1099,6 +1205,9 @@ server APIs and repositories are implemented under `server/src`.
 - **Pure-function algorithms** for urgency and packing, separated from UI.
 - **API adapters and repositories**: `authApi.js`, `syncApi.js`, and `userApi.js`
   separate client transport, while `server/src/*/repository.js` isolates SQL.
+- **Identity-provider adapter**: `@react-oauth/google` acquires the GIS
+  credential, `authApi.js` transports it, and `google-auth-library` verifies it
+  before the transactional user repository links or creates an account.
 
 ### 7.3 Implemented Synchronization Summary
 
@@ -1106,7 +1215,7 @@ server APIs and repositories are implemented under `server/src`.
 |---|---|
 | SSoT | Central Command PostgreSQL database |
 | Authority | Central Admin direct commits; field/coordinator mutations use proposals according to role |
-| Auth | Backend bcrypt verification and signed JWT access tokens |
+| Auth | Backend bcrypt verification or web GIS ID-token verification, followed by signed ReliefOpt JWT access tokens |
 | Online mode | Snapshot polling plus proposal submission/approval |
 | Offline mode | Atomic cached snapshot plus isolated durable proposal outbox |
 | Reconnect | Pull snapshot → rebase optimistic proposals → push proposals → pull |
@@ -1123,7 +1232,7 @@ server APIs and repositories are implemented under `server/src`.
 
 | Requirement | Primary source module(s) |
 |---|---|
-| FR-AUTH.* | `src/context/AuthContext.jsx`, `src/pages/LoginPage.jsx` |
+| FR-AUTH.* | `src/main.jsx`, `src/context/AuthContext.jsx`, `src/pages/LoginPage.jsx`, `src/components/ui/login-form.jsx`, `src/lib/authApi.js`, `server/src/auth/*`, `server/src/db/repository.js`, `server/migrations/007_user_oauth.sql` |
 | FR-RBAC.* | `src/components/RoleGate.jsx`, `src/components/app-shell.jsx`, `src/pages/*` |
 | FR-DATA.* | `src/lib/db.js`, `src/context/DataContext.jsx` |
 | FR-DASH.* | `src/components/dashboard/*`, `src/pages/DashboardPage.jsx` |
@@ -1146,7 +1255,7 @@ remains the target specification; status is tracked separately here.
 
 | Requirement family | Current status | Primary implementation evidence | Automated evidence |
 |---|---|---|---|
-| FR-AUTH.1–12 | Implemented | `server/src/auth/*`, `src/context/AuthContext.jsx` | `server/test/auth.test.js`, `server/test/client-auth-session.test.js`, `e2e/auth-rbac.spec.js` |
+| FR-AUTH.1–22 | Implemented, with GIS intentionally web-only | `server/src/auth/*`, `server/src/db/repository.js`, `server/migrations/007_user_oauth.sql`, `src/main.jsx`, `src/context/AuthContext.jsx`, `src/lib/googleAuth.js` | `server/test/auth.test.js`, `server/test/oauthSchema.test.js`, `server/test/config.test.js`, `server/test/client-auth-session.test.js`, `e2e/auth-rbac.spec.js` |
 | FR-RBAC.1–8 | Implemented | `src/lib/rbac.js`, `src/App.jsx`, server middleware | `test/rbac.test.js`, `e2e/auth-rbac.spec.js` |
 | FR-DATA.1–9 | Implemented | `server/migrations/*`, `src/lib/db.js`, `src/context/DataContext.jsx` | `test/db.test.js`, `server/test/integration.test.js`, `server/test/sync.test.js` |
 | FR-DASH.1–5 | Implemented | `src/pages/DashboardPage.jsx`, `src/components/dashboard/*` | desktop/mobile visual sweep in `e2e/visual.spec.js` |
@@ -1175,5 +1284,11 @@ remains the target specification; status is tracked separately here.
   are never included in P2P payloads.
 - Snapshot signing/hash verification, STUN/TURN, WebSocket push, and formal WCAG
   certification remain deferred scope.
+- Native Google Sign-In for the Capacitor Android build is deferred. GIS is
+  intentionally hidden there; Android currently uses local username/password
+  authentication.
+- Google API authorization, additional Google scopes, refresh-token storage, and
+  background access to Drive, Calendar, or other Google services are out of
+  scope for the identity-only GIS flow.
 - A real PostgreSQL integration run requires a dedicated `TEST_DATABASE_URL`;
   the standard suite uses `pg-mem` and leaves that one test opt-in.
